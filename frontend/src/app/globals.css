@@ -20,7 +20,14 @@ html, body {
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
   color: var(--text);
   font-family: "Cormorant Garamond", "Noto Serif KR", Georgia, serif;
-  min-height: 100vh;
+  min-height: 100vh;          /* fallback for older browsers */
+  min-height: 100dvh;         /* mobile chrome/safari toolbar 변동에 안정 */
+}
+
+/* Lobby/game outer containers — let dynamic viewport drive layout */
+.container-narrow,
+.container-wide {
+  min-height: 100dvh;
 }
 
 a { color: var(--gold-soft); text-decoration: none; }

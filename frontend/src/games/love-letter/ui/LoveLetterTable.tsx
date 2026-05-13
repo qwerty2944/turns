@@ -36,10 +36,11 @@ export const LoveLetterTable = (props: Props) => {
 
   const [stateSnap, setStateSnap] = useState<any>(null);
   const [myHand, setMyHand] = useState<number[]>([]);
-  const [, force] = useState(0);
+  const [sceneReady, setSceneReady] = useState(false);
   const [peek, setPeek] = useState<{ nickname: string; card: number } | null>(null);
   const [revealed, setRevealed] = useState<Record<string, number[]> | null>(null);
   const [playing, setPlaying] = useState<number | null>(null);
+  const [chatInput, setChatInput] = useState("");
 
   // Mount Phaser scene lazily on the client.
   useEffect(() => {
@@ -61,17 +62,21 @@ export const LoveLetterTable = (props: Props) => {
         scene: [LoveLetterScene],
       });
       phaserGameRef.current = game;
-      game.events.once("ready", () => {
-        const sc = game.scene.getScene("love-letter") as InstanceType<
-          typeof LoveLetterScene
-        >;
-        sc.setListener({
-          onCardClick: (card) => setPlaying(card),
-        });
+      // Wait until the Scene itself has finished `create()` (textures preloaded,
+      // layer set up). `game.events.once("ready")` fires too early in some Phaser
+      // builds and React then never gets a deps trigger.
+      const sc = game.scene.getScene("love-letter") as InstanceType<
+        typeof LoveLetterScene
+      >;
+      sc.setListener({
+        onCardClick: (card) => setPlaying(card),
+      });
+      sc.setOnReady(() => {
+        if (destroyed) return;
         sceneRef.current = {
           update: (s) => sc.updateState(s),
         };
-        force((n) => n + 1);
+        setSceneReady(true);
       });
     })();
     return () => {
@@ -111,7 +116,7 @@ export const LoveLetterTable = (props: Props) => {
 
   // Push state to Phaser
   useEffect(() => {
-    if (!stateSnap || !sceneRef.current || !room) return;
+    if (!sceneReady || !stateSnap || !sceneRef.current || !room) return;
     const meSid = (room as Room).sessionId;
     const players: any[] = Object.values(stateSnap.players);
     const me = players.find((p) => p.sessionId === meSid);
@@ -135,7 +140,7 @@ export const LoveLetterTable = (props: Props) => {
       myEliminated: me?.eliminated ?? false,
       myProtected: me?.protected ?? false,
     });
-  }, [stateSnap, myHand, room]);
+  }, [stateSnap, myHand, room, sceneReady]);
 
   const players: any[] = stateSnap ? Object.values(stateSnap.players) : [];
   const meSid = room?.sessionId;
@@ -172,13 +177,35 @@ export const LoveLetterTable = (props: Props) => {
       {status.kind === "error" && <div className="error">{status.error}</div>}
 
       {phase === "lobby" && stateSnap && (
-        <LobbyView
-          state={stateSnap}
-          meSid={meSid!}
-          isHost={isHost}
-          onReady={() => room?.send("toggleReady")}
-          onStart={() => room?.send("startGame")}
-        />
+        <div className="col" style={{ gap: 12 }}>
+          <LobbyView
+            state={stateSnap}
+            meSid={meSid!}
+            isHost={isHost}
+            onReady={() => room?.send("toggleReady")}
+            onStart={() => room?.send("startGame")}
+          />
+          <ActionLog log={stateSnap?.log ?? []} />
+          <form
+            className="panel row"
+            style={{ gap: 8 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const msg = chatInput.trim();
+              if (!msg) return;
+              room?.send("chat", msg);
+              setChatInput("");
+            }}
+          >
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="채팅 입력… (Enter)"
+              maxLength={120}
+            />
+            <button type="submit" disabled={!chatInput.trim()}>전송</button>
+          </form>
+        </div>
       )}
 
       {phase !== "lobby" && (
@@ -188,8 +215,27 @@ export const LoveLetterTable = (props: Props) => {
           </div>
 
           <div className="row" style={{ marginTop: 12, alignItems: "flex-start", gap: 12 }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
               <ActionLog log={stateSnap?.log ?? []} />
+              <form
+                className="panel row"
+                style={{ gap: 8 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const msg = chatInput.trim();
+                  if (!msg) return;
+                  room?.send("chat", msg);
+                  setChatInput("");
+                }}
+              >
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="채팅 입력… (Enter)"
+                  maxLength={120}
+                />
+                <button type="submit" disabled={!chatInput.trim()}>전송</button>
+              </form>
             </div>
             <div className="panel col" style={{ flex: 1 }}>
               <h3 className="title" style={{ margin: 0, fontSize: "1rem" }}>점수</h3>

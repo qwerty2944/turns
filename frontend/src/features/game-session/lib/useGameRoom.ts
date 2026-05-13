@@ -70,9 +70,27 @@ export const useGameRoom = (options: Options) => {
     connect();
     return () => {
       active = false;
-      if (r) r.leave().catch(() => {});
+      if (r) r.leave(true).catch(() => {});
     };
   }, [token]);
+
+  // Make sure browser close / tab close sends a consented leave so the
+  // server can dispose empty rooms immediately instead of waiting for
+  // the reconnection window or ping timeout.
+  useEffect(() => {
+    if (!room) return;
+    const handler = () => {
+      try {
+        room.leave(true);
+      } catch {}
+    };
+    window.addEventListener("beforeunload", handler);
+    window.addEventListener("pagehide", handler);
+    return () => {
+      window.removeEventListener("beforeunload", handler);
+      window.removeEventListener("pagehide", handler);
+    };
+  }, [room]);
 
   return { room, status };
 };

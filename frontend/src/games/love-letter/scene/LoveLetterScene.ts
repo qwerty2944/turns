@@ -20,6 +20,7 @@ export type SceneState = {
 };
 
 type Listener = { onCardClick: (card: number, idx: number) => void };
+type ReadyCallback = () => void;
 
 const CARD_W = 110;
 const CARD_H = 165;
@@ -37,6 +38,7 @@ export class LoveLetterScene extends Phaser.Scene {
   };
   private listener: Listener = { onCardClick: () => {} };
   private layer!: Phaser.GameObjects.Container;
+  private onReadyCb?: ReadyCallback;
 
   constructor() {
     super("love-letter");
@@ -44,6 +46,11 @@ export class LoveLetterScene extends Phaser.Scene {
 
   setListener(l: Listener) {
     this.listener = l;
+  }
+
+  setOnReady(cb: ReadyCallback) {
+    this.onReadyCb = cb;
+    if (this.layer) cb(); // scene already created — fire immediately
   }
 
   preload() {
@@ -55,6 +62,7 @@ export class LoveLetterScene extends Phaser.Scene {
   create() {
     this.layer = this.add.container(0, 0);
     this.renderAll();
+    this.onReadyCb?.();
   }
 
   updateState(s: SceneState) {
