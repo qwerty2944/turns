@@ -1,93 +1,214 @@
-:root {
-  --bg: #0d0a1f;
-  --bg-2: #1a1334;
-  --panel: rgba(28, 19, 60, 0.78);
-  --gold: #d9b66c;
-  --gold-soft: #f1d999;
-  --text: #efe6c6;
-  --muted: #a496c4;
-  --danger: #e06363;
-  --accent: #7a3fff;
+/* ─── Fonts ──────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Cormorant+Garamond:wght@400;600&family=Noto+Serif+KR:wght@400;600&display=swap");
+/* Galmuri11 — Korean+English pixel font (quiple/galmuri on npm via jsDelivr) */
+@import url("https://cdn.jsdelivr.net/npm/galmuri/dist/Galmuri11.css");
+
+/* ─── Theme tokens ────────────────────────────────────────────────── */
+:root,
+[data-theme="pixel"] {
+  --bg: #1a1a2e;
+  --bg-2: #0f1224;
+  --bg-grid: rgba(255, 255, 255, 0.04);
+  --panel: #1f1f3a;
+  --panel-2: #161630;
+  --panel-border: #5b7fff;
+  --text: #f2f2ff;
+  --muted: #8a8aaf;
+  --accent: #f5d76e;
+  --accent-strong: #ffd84d;
+  --accent-press: #c9a132;
+  --danger: #ff4d6d;
+  --danger-bg: rgba(255, 77, 109, 0.12);
+  --success: #50fa7b;
+  --link: #6ad1ff;
+
+  --gold-soft: #f5d76e;
+  --gold: #c9a132;
+
+  --font-body: "Galmuri11", "DungGeunMo", "Press Start 2P", monospace;
+  --font-display: "Press Start 2P", "Galmuri11", monospace;
+
+  --radius: 0px;
+  --shadow-stepped: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  --shadow-press: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  --img-render: auto;
 }
 
+[data-theme="tarot"] {
+  --bg: #0d0a1f;
+  --bg-2: #1a1334;
+  --bg-grid: transparent;
+  --panel: rgba(28, 19, 60, 0.78);
+  --panel-2: rgba(28, 19, 60, 0.6);
+  --panel-border: rgba(217, 182, 108, 0.35);
+  --text: #efe6c6;
+  --muted: #a496c4;
+  --accent: #d9b66c;
+  --accent-strong: #f1d999;
+  --accent-press: #b89048;
+  --danger: #e06363;
+  --danger-bg: rgba(224, 99, 99, 0.08);
+  --success: #b6f1c2;
+  --link: #f1d999;
+
+  --gold-soft: #f1d999;
+  --gold: #d9b66c;
+
+  --font-body: "Cormorant Garamond", "Noto Serif KR", Georgia, serif;
+  --font-display: "Cormorant Garamond", "Noto Serif KR", serif;
+
+  --radius: 12px;
+  --shadow-stepped: 0 0 18px rgba(217, 182, 108, 0.35);
+  --shadow-press: 0 0 12px rgba(217, 182, 108, 0.25);
+  --img-render: auto;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
   padding: 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+[data-theme="pixel"] body {
+  background:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+}
+[data-theme="tarot"] body {
   background:
     radial-gradient(1200px 800px at 50% -10%, #2c1f5e 0%, transparent 70%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  color: var(--text);
-  font-family: "Cormorant Garamond", "Noto Serif KR", Georgia, serif;
-  min-height: 100vh;          /* fallback for older browsers */
-  min-height: 100dvh;         /* mobile chrome/safari toolbar 변동에 안정 */
 }
 
-/* Lobby/game outer containers — let dynamic viewport drive layout */
+/* Card images & other ornate assets — keep crisp resampling regardless of theme */
+img.no-pixelate, .no-pixelate img { image-rendering: auto !important; }
+
 .container-narrow,
 .container-wide {
   min-height: 100dvh;
 }
 
-a { color: var(--gold-soft); text-decoration: none; }
+a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+/* ─── Buttons (pixel: stepped 8-bit; tarot: ornate glow) ─────────── */
 button {
   font: inherit;
-  border: 1px solid var(--gold);
-  background: linear-gradient(180deg, #3b2a72 0%, #21194a 100%);
-  color: var(--gold-soft);
-  padding: 0.55rem 1.2rem;
-  border-radius: 6px;
+  font-family: var(--font-body);
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  color: var(--accent);
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius);
   cursor: pointer;
   letter-spacing: 0.04em;
   white-space: nowrap;
-  transition: transform 0.08s ease, box-shadow 0.15s ease;
+  transition: transform 0.08s ease, box-shadow 0.12s ease,
+              background 0.12s ease, color 0.12s ease;
+  box-shadow: var(--shadow-stepped);
+}
+[data-theme="tarot"] button {
+  background: linear-gradient(180deg, #3b2a72 0%, #21194a 100%);
+  border: 1px solid var(--gold);
+  color: var(--gold-soft);
 }
 button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--bg);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="tarot"] button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #4d3787 0%, #2a205f 100%);
+  color: var(--gold-soft);
+  transform: none;
   box-shadow: 0 0 0 1px var(--gold-soft), 0 0 18px rgba(217, 182, 108, 0.35);
 }
-button:active:not(:disabled) { transform: translateY(1px); }
+button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-press);
+}
+[data-theme="tarot"] button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-input {
+/* ─── Inputs ─────────────────────────────────────────────────────── */
+input, select, textarea {
   font: inherit;
-  background: rgba(13, 10, 31, 0.6);
-  border: 1px solid rgba(217, 182, 108, 0.4);
+  font-family: var(--font-body);
+  background: var(--panel-2);
+  border: 2px solid var(--panel-border);
   color: var(--text);
   padding: 0.55rem 0.75rem;
-  border-radius: 6px;
+  border-radius: var(--radius);
   width: 100%;
 }
-input:focus { outline: none; border-color: var(--gold); }
+[data-theme="tarot"] input,
+[data-theme="tarot"] select,
+[data-theme="tarot"] textarea {
+  background: rgba(13, 10, 31, 0.6);
+  border: 1px solid rgba(217, 182, 108, 0.4);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-strong);
+}
+[data-theme="tarot"] input:focus,
+[data-theme="tarot"] select:focus,
+[data-theme="tarot"] textarea:focus {
+  box-shadow: none;
+}
 
+/* ─── Panel ──────────────────────────────────────────────────────── */
 .panel {
   background: var(--panel);
-  border: 1px solid rgba(217, 182, 108, 0.35);
-  border-radius: 12px;
+  border: 2px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-press);
+}
+[data-theme="tarot"] .panel {
+  border: 1px solid var(--panel-border);
   padding: 1.5rem;
   backdrop-filter: blur(6px);
+  box-shadow: none;
 }
 
+/* ─── Typography ─────────────────────────────────────────────────── */
 .title {
-  font-family: "Cormorant Garamond", "Noto Serif KR", serif;
+  font-family: var(--font-display);
   letter-spacing: 0.08em;
-  color: var(--gold-soft);
+  color: var(--accent);
+}
+[data-theme="pixel"] .title {
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+}
+[data-theme="tarot"] .title {
   text-shadow: 0 0 18px rgba(217, 182, 108, 0.35);
 }
-
 .muted { color: var(--muted); }
 
 .error {
   color: var(--danger);
-  background: rgba(224, 99, 99, 0.08);
-  border: 1px solid rgba(224, 99, 99, 0.4);
+  background: var(--danger-bg);
+  border: 2px solid var(--danger);
   padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  border-radius: var(--radius);
   margin-top: 0.6rem;
 }
+[data-theme="tarot"] .error { border-width: 1px; }
 
+/* ─── Layout helpers ─────────────────────────────────────────────── */
 .row { display: flex; gap: 0.75rem; align-items: center; }
 .col { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -96,14 +217,13 @@ input:focus { outline: none; border-color: var(--gold); }
   margin: 5rem auto;
   padding: 0 1rem;
 }
-
 .container-wide {
   max-width: 1100px;
   margin: 2rem auto;
   padding: 0 1rem;
 }
 
-/* ─── Play shell — full-viewport game layout ──────────────────────── */
+/* ─── Play shell (game page) ─────────────────────────────────────── */
 .play-shell {
   height: 100dvh;
   max-width: 1500px;
@@ -140,11 +260,8 @@ input:focus { outline: none; border-color: var(--gold); }
   .play-side { grid-template-rows: auto auto auto; max-height: 45dvh; }
 }
 
-/* ─── Card hover tooltip ──────────────────────────────────────────── */
-.card-host {
-  position: relative;
-  display: inline-block;
-}
+/* ─── Card hover tooltip ─────────────────────────────────────────── */
+.card-host { position: relative; display: inline-block; }
 .card-tooltip {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -169,15 +286,12 @@ input:focus { outline: none; border-color: var(--gold); }
   text-align: left;
   white-space: normal;
 }
-.card-tooltip * {
-  white-space: normal;
-}
+.card-tooltip * { white-space: normal; }
 .card-host:hover .card-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(0) scale(1);
 }
 
-/* Pickable target highlight inside play modal */
 .target-card {
   background: transparent;
   border: 2px solid rgba(217, 182, 108, 0.45);
@@ -192,13 +306,187 @@ input:focus { outline: none; border-color: var(--gold); }
   gap: 4px;
   color: var(--text);
   min-width: 90px;
+  box-shadow: none;
 }
 .target-card:hover:not(:disabled) {
   border-color: var(--gold-soft);
   box-shadow: 0 0 0 1px var(--gold-soft), 0 0 16px rgba(217, 182, 108, 0.35);
   transform: translateY(-2px);
 }
-.target-card:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.target-card:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ─── Spinner ────────────────────────────────────────────────────── */
+.spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: currentColor;
+}
+.spinner {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+[data-theme="pixel"] .spinner {
+  animation: spin 0.8s steps(8, end) infinite;
+}
+.spinner-label { font-size: 0.9em; }
+.full-page-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 60dvh;
+  color: var(--accent);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Theme switcher button ──────────────────────────────────────── */
+.theme-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85em;
+  border-width: 1px;
+}
+
+/* ─── Landing page (pixel-game showcase) ─────────────────────────── */
+.landing {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.landing-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, var(--accent-strong) 50%, transparent 51%),
+    radial-gradient(2px 2px at 75% 18%, #ffffff 50%, transparent 51%),
+    radial-gradient(2px 2px at 40% 70%, var(--link) 50%, transparent 51%),
+    radial-gradient(2px 2px at 90% 60%, #ffffff 50%, transparent 51%),
+    radial-gradient(2px 2px at 15% 85%, var(--accent) 50%, transparent 51%),
+    radial-gradient(2px 2px at 55% 25%, #ffffff 50%, transparent 51%),
+    radial-gradient(2px 2px at 80% 85%, var(--accent-strong) 50%, transparent 51%);
+  background-size: 100% 100%;
+  animation: twinkle 3s steps(3, end) infinite;
+  opacity: 0.7;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.25; }
+}
+.landing-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 32px;
+}
+.landing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.landing-brand {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+}
+.landing-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 40px 0;
+}
+.landing-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin: 0;
+  text-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.6),
+    0 0 24px var(--accent-press);
+  animation: pixel-blink 4s steps(2, end) infinite;
+}
+[data-theme="tarot"] .landing-title {
+  text-shadow: 0 0 24px rgba(217, 182, 108, 0.45);
+  animation: none;
+}
+@keyframes pixel-blink {
+  0%, 96%, 100% { opacity: 1; }
+  98% { opacity: 0.6; }
+}
+.landing-sub {
+  font-size: clamp(0.8rem, 2vw, 1.05rem);
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  margin: 0;
+}
+.landing-cta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+.landing-cta .pixel-btn {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  padding: 0.9rem 1.6rem;
+}
+.landing-cta .pixel-btn.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.landing-cta .pixel-btn.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  color: var(--bg);
+}
+.landing-games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.landing-game-card {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.landing-game-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+.landing-game-card .meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.landing-game-card.unavailable {
+  opacity: 0.55;
+}
+.landing-footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel-border);
 }

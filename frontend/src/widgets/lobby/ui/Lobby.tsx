@@ -8,6 +8,7 @@ import type { RoomInfo } from "@/entities/room/api/rooms";
 import { CreateRoomForm } from "@/features/rooms/create-room/ui/CreateRoomForm";
 import { RoomList } from "@/features/rooms/list-rooms/ui/RoomList";
 import { LogoutButton } from "@/features/auth/logout/ui/LogoutButton";
+import { ThemeSwitcher } from "@/features/theme-switcher/ui/ThemeSwitcher";
 
 export const Lobby = () => {
   const router = useRouter();
@@ -26,7 +27,8 @@ export const Lobby = () => {
     <div className="container-wide">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
         <h1 className="title" style={{ margin: 0 }}>로비</h1>
-        <div className="row">
+        <div className="row" style={{ gap: 8 }}>
+          <ThemeSwitcher compact />
           <Link href="/account" className="muted" style={{ textDecoration: "underline" }}>
             {user?.nickname}
           </Link>
