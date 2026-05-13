@@ -30,24 +30,39 @@ export const CardImage = ({ card, size = 64, faceDown, noTooltip }: Props) => {
       />
       {showTooltip && (
         <div className="card-tooltip" role="tooltip">
-          <div className="card-tooltip-art" style={{ width: 96, height: 144 }}>
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                backgroundImage: `url(/cards/${key}.png)`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                borderRadius: 6,
-                border: "1px solid var(--gold)",
-              }}
-            />
-          </div>
-          <div className="col" style={{ gap: 4 }}>
+          <div
+            style={{
+              width: 96,
+              height: 144,
+              flex: "0 0 96px",
+              backgroundImage: `url(/cards/${key}.png)`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              borderRadius: 6,
+              border: "1px solid var(--gold)",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             <strong style={{ color: "var(--gold-soft)", fontSize: 16 }}>
               {card}. {CARD_NAMES_KR[card]}
             </strong>
-            <p style={{ margin: 0, color: "var(--text)", fontSize: 13, lineHeight: 1.5 }}>
+            <p
+              style={{
+                margin: 0,
+                color: "var(--text)",
+                fontSize: 13,
+                lineHeight: 1.5,
+                wordBreak: "keep-all",
+              }}
+            >
               {CARD_DESC_KR[card]}
             </p>
           </div>
