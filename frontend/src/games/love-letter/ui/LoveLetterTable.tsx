@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Room } from "@colyseus/sdk";
 import { useGameRoom } from "@/features/game-session/lib/useGameRoom";
@@ -17,14 +17,9 @@ type Props = {
   maxPlayers?: number;
 };
 
-type SceneStateRef = { update: (s: any) => void } | null;
-
 export const LoveLetterTable = (props: Props) => {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const hostRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<SceneStateRef>(null);
-  const phaserGameRef = useRef<any>(null);
 
   const { room, status } = useGameRoom({
     roomName: "love_letter",
@@ -36,65 +31,16 @@ export const LoveLetterTable = (props: Props) => {
 
   const [stateSnap, setStateSnap] = useState<any>(null);
   const [myHand, setMyHand] = useState<number[]>([]);
-  const [sceneReady, setSceneReady] = useState(false);
   const [peek, setPeek] = useState<{ nickname: string; card: number } | null>(null);
   const [revealed, setRevealed] = useState<Record<string, number[]> | null>(null);
   const [playing, setPlaying] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState("");
 
-  // Mount Phaser scene lazily on the client.
-  // We instantiate the Scene ourselves (instead of letting Phaser construct it
-  // from a class) so we can attach the `setOnReady` callback BEFORE create()
-  // runs — guarantees the ready signal reaches React even if Phaser's internal
-  // boot order changes.
-  useEffect(() => {
-    let destroyed = false;
-    (async () => {
-      const Phaser = (await import("phaser")).default;
-      const { LoveLetterScene } = await import("../scene/LoveLetterScene");
-      if (destroyed || !hostRef.current) return;
-
-      const sc = new LoveLetterScene();
-      sc.setListener({
-        onCardClick: (card) => setPlaying(card),
-      });
-      sc.setOnReady(() => {
-        if (destroyed) return;
-        sceneRef.current = {
-          update: (s) => sc.updateState(s),
-        };
-        setSceneReady(true);
-      });
-
-      const game = new Phaser.Game({
-        type: Phaser.AUTO,
-        parent: hostRef.current,
-        backgroundColor: "#140d2e",
-        scale: {
-          mode: Phaser.Scale.RESIZE,
-          autoCenter: Phaser.Scale.CENTER_BOTH,
-        },
-        width: hostRef.current.clientWidth,
-        height: 480,
-        scene: sc,
-      });
-      phaserGameRef.current = game;
-    })();
-    return () => {
-      destroyed = true;
-      if (phaserGameRef.current) {
-        phaserGameRef.current.destroy(true);
-        phaserGameRef.current = null;
-      }
-    };
-  }, []);
-
-  // Wire Colyseus state to scene + react UI
+  // Wire Colyseus state to React
   useEffect(() => {
     if (!room) return;
     const r = room as Room;
     const onChange = () => setStateSnap(toSnap(r.state));
-    // Initial + every state change
     r.onStateChange(onChange);
     onChange();
 
@@ -110,44 +56,19 @@ export const LoveLetterTable = (props: Props) => {
     });
   }, [room]);
 
-  // When a new round begins, hide reveal modal
+  // Hide reveal modal when a new round begins
   useEffect(() => {
     if (stateSnap?.phase === "playing" && revealed) setRevealed(null);
   }, [stateSnap?.phase, revealed]);
 
-  // Push state to Phaser
-  useEffect(() => {
-    if (!sceneReady || !stateSnap || !sceneRef.current || !room) return;
-    const meSid = (room as Room).sessionId;
-    const players: any[] = Object.values(stateSnap.players);
-    const me = players.find((p) => p.sessionId === meSid);
-    const opponents = players
-      .filter((p) => p.sessionId !== meSid)
-      .map((p) => ({
-        sessionId: p.sessionId,
-        nickname: p.nickname,
-        discard: p.discard,
-        eliminated: p.eliminated,
-        protected: p.protected,
-        tokens: p.tokens,
-        isTurn: stateSnap.turnOrder?.[stateSnap.turnIndex] === p.sessionId,
-      }));
-    sceneRef.current.update({
-      myHand,
-      opponents,
-      isMyTurn: stateSnap.turnOrder?.[stateSnap.turnIndex] === meSid,
-      deckRemaining: stateSnap.deckRemaining,
-      myTokens: me?.tokens ?? 0,
-      myEliminated: me?.eliminated ?? false,
-      myProtected: me?.protected ?? false,
-    });
-  }, [stateSnap, myHand, room, sceneReady]);
-
   const players: any[] = stateSnap ? Object.values(stateSnap.players) : [];
   const meSid = room?.sessionId;
   const me = players.find((p) => p.sessionId === meSid);
+  const opponents = players.filter((p) => p.sessionId !== meSid);
   const isHost = stateSnap?.hostSessionId === meSid;
   const isMyTurn = stateSnap?.turnOrder?.[stateSnap.turnIndex] === meSid;
+  const currentTurnSid: string | undefined =
+    stateSnap?.turnOrder?.[stateSnap.turnIndex];
   const phase = stateSnap?.phase ?? "lobby";
 
   const countessRestriction = useMemo(() => {
@@ -160,6 +81,13 @@ export const LoveLetterTable = (props: Props) => {
   const leave = () => {
     room?.leave().catch(() => {});
     router.push("/lobby");
+  };
+
+  const sendChat = () => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    room?.send("chat", msg);
+    setChatInput("");
   };
 
   return (
@@ -187,64 +115,39 @@ export const LoveLetterTable = (props: Props) => {
             onStart={() => room?.send("startGame")}
           />
           <ActionLog log={stateSnap?.log ?? []} />
-          <form
-            className="panel row"
-            style={{ gap: 8 }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              const msg = chatInput.trim();
-              if (!msg) return;
-              room?.send("chat", msg);
-              setChatInput("");
-            }}
-          >
-            <input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="채팅 입력… (Enter)"
-              maxLength={120}
-            />
-            <button type="submit" disabled={!chatInput.trim()}>전송</button>
-          </form>
+          <ChatBox
+            value={chatInput}
+            onChange={setChatInput}
+            onSubmit={sendChat}
+          />
         </div>
       )}
 
       {phase !== "lobby" && (
         <>
-          <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
-            <div ref={hostRef} style={{ width: "100%", height: 480 }} />
-          </div>
+          <TableView
+            opponents={opponents}
+            currentTurnSid={currentTurnSid}
+            deckRemaining={stateSnap?.deckRemaining ?? 0}
+            myHand={myHand}
+            isMyTurn={isMyTurn && !me?.eliminated}
+            myEliminated={!!me?.eliminated}
+            onPickCard={(c) => setPlaying(c)}
+            myTokens={me?.tokens ?? 0}
+            myNickname={user?.nickname ?? "나"}
+            myProtected={!!me?.protected}
+          />
 
-          <div className="row" style={{ marginTop: 12, alignItems: "flex-start", gap: 12 }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="row" style={{ marginTop: 12, alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 320px", display: "flex", flexDirection: "column", gap: 12 }}>
               <ActionLog log={stateSnap?.log ?? []} />
-              <form
-                className="panel row"
-                style={{ gap: 8 }}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const msg = chatInput.trim();
-                  if (!msg) return;
-                  room?.send("chat", msg);
-                  setChatInput("");
-                }}
-              >
-                <input
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="채팅 입력… (Enter)"
-                  maxLength={120}
-                />
-                <button
-                  type="submit"
-                  disabled={!chatInput.trim()}
-                  style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-                >
-                  전송
-                </button>
-              </form>
+              <ChatBox
+                value={chatInput}
+                onChange={setChatInput}
+                onSubmit={sendChat}
+              />
             </div>
-            <div className="panel col" style={{ flex: 1 }}>
+            <div className="panel col" style={{ flex: "1 1 240px" }}>
               <h3 className="title" style={{ margin: 0, fontSize: "1rem" }}>점수</h3>
               {players.map((p) => (
                 <div key={p.sessionId} className="row" style={{ justifyContent: "space-between" }}>
@@ -262,7 +165,8 @@ export const LoveLetterTable = (props: Props) => {
 
       {peek && (
         <FloatingNote onClose={() => setPeek(null)}>
-          <strong>{peek.nickname}</strong>의 카드는 <strong>{CARD_NAMES_KR[peek.card]}</strong> 입니다.
+          <strong>{peek.nickname}</strong>의 카드는{" "}
+          <strong>{CARD_NAMES_KR[peek.card]}</strong> 입니다.
         </FloatingNote>
       )}
 
@@ -271,7 +175,8 @@ export const LoveLetterTable = (props: Props) => {
           <h2 className="title" style={{ margin: 0 }}>라운드 종료</h2>
           {stateSnap.roundWinnerId && (
             <p>
-              승자: <strong>
+              승자:{" "}
+              <strong>
                 {players.find((p) => p.sessionId === stateSnap.roundWinnerId)?.nickname}
               </strong>
             </p>
@@ -341,6 +246,169 @@ export const LoveLetterTable = (props: Props) => {
   );
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Subcomponents
+// ────────────────────────────────────────────────────────────────────────────
+
+type OpponentView = {
+  sessionId: string;
+  nickname: string;
+  discard: number[];
+  eliminated: boolean;
+  protected: boolean;
+  tokens: number;
+};
+
+const TableView = ({
+  opponents,
+  currentTurnSid,
+  deckRemaining,
+  myHand,
+  isMyTurn,
+  myEliminated,
+  onPickCard,
+  myTokens,
+  myNickname,
+  myProtected,
+}: {
+  opponents: OpponentView[];
+  currentTurnSid?: string;
+  deckRemaining: number;
+  myHand: number[];
+  isMyTurn: boolean;
+  myEliminated: boolean;
+  onPickCard: (card: number) => void;
+  myTokens: number;
+  myNickname: string;
+  myProtected: boolean;
+}) => {
+  return (
+    <div
+      className="panel"
+      style={{
+        padding: 20,
+        display: "grid",
+        gridTemplateRows: "auto 1fr auto",
+        gap: 24,
+        minHeight: 480,
+        background:
+          "radial-gradient(60% 80% at 50% 45%, rgba(122,63,255,0.18) 0%, transparent 60%), linear-gradient(180deg, rgba(20,13,46,0.9) 0%, rgba(33,25,74,0.9) 100%)",
+      }}
+    >
+      {/* Opponents row */}
+      <div
+        className="row"
+        style={{
+          justifyContent: "space-around",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 16,
+        }}
+      >
+        {opponents.length === 0 && (
+          <span className="muted">상대를 기다리는 중…</span>
+        )}
+        {opponents.map((op) => (
+          <OpponentSeat key={op.sessionId} op={op} isTurn={op.sessionId === currentTurnSid} />
+        ))}
+      </div>
+
+      {/* Deck center */}
+      <div
+        className="col"
+        style={{ alignItems: "center", justifyContent: "center", gap: 6 }}
+      >
+        <CardImage card={0} faceDown size={70} />
+        <span className="muted">덱 {deckRemaining}장</span>
+      </div>
+
+      {/* My hand */}
+      <div className="col" style={{ alignItems: "center", gap: 8 }}>
+        <div className="row" style={{ gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          {myHand.length === 0 ? (
+            <span className="muted">손패 없음</span>
+          ) : (
+            myHand.map((c, idx) => (
+              <button
+                key={`${c}-${idx}`}
+                onClick={() => isMyTurn && onPickCard(c)}
+                disabled={!isMyTurn}
+                title={CARD_NAMES_KR[c]}
+                style={{
+                  padding: 0,
+                  background: "transparent",
+                  border: "none",
+                  cursor: isMyTurn ? "pointer" : "default",
+                  transition: "transform 0.1s ease",
+                  opacity: isMyTurn ? 1 : 0.75,
+                  filter: isMyTurn
+                    ? "drop-shadow(0 0 12px rgba(217,182,108,0.4))"
+                    : "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (isMyTurn) e.currentTarget.style.transform = "translateY(-6px) scale(1.03)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "";
+                }}
+              >
+                <CardImage card={c} size={88} />
+              </button>
+            ))
+          )}
+        </div>
+        <div
+          style={{
+            color: myEliminated
+              ? "var(--danger)"
+              : isMyTurn
+                ? "var(--gold-soft)"
+                : "var(--muted)",
+            fontSize: 15,
+          }}
+        >
+          {myEliminated
+            ? "💀 탈락"
+            : isMyTurn
+              ? "내 차례 — 카드를 클릭해서 사용"
+              : "상대 차례를 기다리는 중"}
+          {"  ❤ "}{myTokens} · {myNickname}
+          {myProtected && " 🛡"}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OpponentSeat = ({ op, isTurn }: { op: OpponentView; isTurn: boolean }) => (
+  <div
+    className="col"
+    style={{
+      alignItems: "center",
+      gap: 4,
+      padding: "8px 10px",
+      borderRadius: 8,
+      background: isTurn ? "rgba(217,182,108,0.14)" : "transparent",
+      border: isTurn ? "1px solid var(--gold-soft)" : "1px solid transparent",
+      minWidth: 140,
+      opacity: op.eliminated ? 0.45 : 1,
+    }}
+  >
+    <div style={{ color: isTurn ? "var(--gold-soft)" : "var(--text)" }}>
+      {op.eliminated ? "💀 " : ""}{op.nickname}{op.protected ? " 🛡" : ""}{isTurn ? " ▶" : ""}
+    </div>
+    <CardImage card={0} faceDown size={56} />
+    <div className="muted" style={{ fontSize: 13 }}>❤ {op.tokens}</div>
+    {op.discard.length > 0 && (
+      <div className="row" style={{ gap: 2, flexWrap: "wrap", justifyContent: "center", marginTop: 2 }}>
+        {op.discard.slice(-6).map((c, i) => (
+          <CardImage key={i} card={c} size={26} />
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const LobbyView = ({
   state,
   meSid,
@@ -389,10 +457,7 @@ const LobbyView = ({
       <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
         {!isHost && <button onClick={onReady}>준비 토글</button>}
         {isHost && (
-          <button
-            onClick={onStart}
-            disabled={players.length < 2 || !ready}
-          >
+          <button onClick={onStart} disabled={players.length < 2 || !ready}>
             시작
           </button>
         )}
@@ -400,6 +465,39 @@ const LobbyView = ({
     </div>
   );
 };
+
+const ChatBox = ({
+  value,
+  onChange,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+}) => (
+  <form
+    className="panel row"
+    style={{ gap: 8 }}
+    onSubmit={(e) => {
+      e.preventDefault();
+      onSubmit();
+    }}
+  >
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="채팅 입력… (Enter)"
+      maxLength={120}
+    />
+    <button
+      type="submit"
+      disabled={!value.trim()}
+      style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+    >
+      전송
+    </button>
+  </form>
+);
 
 const Modal = ({ children }: { children: React.ReactNode }) => (
   <div
@@ -442,7 +540,7 @@ const FloatingNote = ({
   </div>
 );
 
-// Convert Colyseus Schema (with MapSchema/ArraySchema) into plain snapshot.
+// Convert Colyseus Schema (with MapSchema/ArraySchema) into a plain snapshot.
 const toSnap = (state: any) => {
   if (!state) return state;
   const playersObj: Record<string, any> = {};

@@ -1,10 +1,4 @@
 import type { ComponentType } from "react";
-import type Phaser from "phaser";
-
-export type GameSessionContext = {
-  /** Phaser game instance for this session, if any. */
-  scene?: Phaser.Scene;
-};
 
 export type GameManifest = {
   id: string;             // matches backend room name
