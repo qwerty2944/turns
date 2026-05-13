@@ -43,31 +43,18 @@ export const LoveLetterTable = (props: Props) => {
   const [chatInput, setChatInput] = useState("");
 
   // Mount Phaser scene lazily on the client.
+  // We instantiate the Scene ourselves (instead of letting Phaser construct it
+  // from a class) so we can attach the `setOnReady` callback BEFORE create()
+  // runs — guarantees the ready signal reaches React even if Phaser's internal
+  // boot order changes.
   useEffect(() => {
     let destroyed = false;
     (async () => {
       const Phaser = (await import("phaser")).default;
       const { LoveLetterScene } = await import("../scene/LoveLetterScene");
       if (destroyed || !hostRef.current) return;
-      const game = new Phaser.Game({
-        type: Phaser.AUTO,
-        parent: hostRef.current,
-        backgroundColor: "#140d2e",
-        scale: {
-          mode: Phaser.Scale.RESIZE,
-          autoCenter: Phaser.Scale.CENTER_BOTH,
-        },
-        width: hostRef.current.clientWidth,
-        height: 480,
-        scene: [LoveLetterScene],
-      });
-      phaserGameRef.current = game;
-      // Wait until the Scene itself has finished `create()` (textures preloaded,
-      // layer set up). `game.events.once("ready")` fires too early in some Phaser
-      // builds and React then never gets a deps trigger.
-      const sc = game.scene.getScene("love-letter") as InstanceType<
-        typeof LoveLetterScene
-      >;
+
+      const sc = new LoveLetterScene();
       sc.setListener({
         onCardClick: (card) => setPlaying(card),
       });
@@ -78,6 +65,20 @@ export const LoveLetterTable = (props: Props) => {
         };
         setSceneReady(true);
       });
+
+      const game = new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: hostRef.current,
+        backgroundColor: "#140d2e",
+        scale: {
+          mode: Phaser.Scale.RESIZE,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+        },
+        width: hostRef.current.clientWidth,
+        height: 480,
+        scene: sc,
+      });
+      phaserGameRef.current = game;
     })();
     return () => {
       destroyed = true;
@@ -234,7 +235,13 @@ export const LoveLetterTable = (props: Props) => {
                   placeholder="채팅 입력… (Enter)"
                   maxLength={120}
                 />
-                <button type="submit" disabled={!chatInput.trim()}>전송</button>
+                <button
+                  type="submit"
+                  disabled={!chatInput.trim()}
+                  style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                >
+                  전송
+                </button>
               </form>
             </div>
             <div className="panel col" style={{ flex: 1 }}>

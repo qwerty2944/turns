@@ -42,6 +42,7 @@ button {
   border-radius: 6px;
   cursor: pointer;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   transition: transform 0.08s ease, box-shadow 0.15s ease;
 }
 button:hover:not(:disabled) {
