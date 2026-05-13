@@ -197,6 +197,7 @@ export const LoveLetterTable = (props: Props) => {
 
       {status.kind === "connecting" && <p className="muted">방에 연결 중…</p>}
       {status.kind === "error" && <div className="error">{status.error}</div>}
+      {status.kind === "closed" && <RoomClosedRedirect />}
 
       {phase === "lobby" && stateSnap && (
         <div className="col" style={{ gap: 12 }}>
@@ -553,6 +554,22 @@ const OpponentSeat = ({
     )}
   </div>
 );
+
+const RoomClosedRedirect = () => {
+  const router = useRouter();
+  useEffect(() => {
+    const t = setTimeout(() => router.replace("/lobby"), 2500);
+    return () => clearTimeout(t);
+  }, [router]);
+  return (
+    <div className="panel col" style={{ alignItems: "center", gap: 8 }}>
+      <h2 className="title" style={{ margin: 0 }}>방이 종료되었습니다</h2>
+      <p className="muted" style={{ margin: 0 }}>
+        인원 부족 또는 호스트 퇴장으로 방이 폭파되었습니다. 곧 로비로 돌아갑니다…
+      </p>
+    </div>
+  );
+};
 
 const LobbyView = ({
   state,
