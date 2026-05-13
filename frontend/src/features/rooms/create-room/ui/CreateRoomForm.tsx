@@ -44,19 +44,15 @@ export const CreateRoomForm = ({ games }: Props) => {
   return (
     <div className="panel col">
       <h2 className="title" style={{ margin: 0, fontSize: "1.2rem" }}>방 만들기</h2>
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <label className="row muted" style={{ gap: 6 }}>
+      <div className="row" style={{ flexWrap: "wrap", alignItems: "center" }}>
+        <label
+          className="row muted"
+          style={{ gap: 6, flex: "0 0 auto", whiteSpace: "nowrap" }}
+        >
           게임
           <select
             value={gameId}
             onChange={(e) => onGameChange(e.target.value)}
-            style={{
-              background: "rgba(13,10,31,0.6)",
-              border: "1px solid rgba(217,182,108,0.4)",
-              color: "var(--text)",
-              padding: "0.4rem",
-              borderRadius: 6,
-            }}
           >
             {games.map((g) => (
               <option key={g.id} value={g.id} disabled={!g.available}>
@@ -70,20 +66,16 @@ export const CreateRoomForm = ({ games }: Props) => {
           value={roomName}
           onChange={(e) => setRoomName(e.target.value)}
           maxLength={24}
-          style={{ flex: "1 1 200px" }}
+          style={{ flex: "1 1 200px", minWidth: 0 }}
         />
-        <label className="row muted" style={{ gap: 6 }}>
+        <label
+          className="row muted"
+          style={{ gap: 6, flex: "0 0 auto", whiteSpace: "nowrap" }}
+        >
           인원
           <select
             value={maxPlayers}
             onChange={(e) => setMaxPlayers(Number(e.target.value))}
-            style={{
-              background: "rgba(13,10,31,0.6)",
-              border: "1px solid rgba(217,182,108,0.4)",
-              color: "var(--text)",
-              padding: "0.4rem",
-              borderRadius: 6,
-            }}
           >
             {playerCounts.map((n) => (
               <option key={n} value={n}>{n}명</option>

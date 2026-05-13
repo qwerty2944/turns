@@ -150,8 +150,9 @@ input, select, textarea {
   color: var(--text);
   padding: 0.55rem 0.75rem;
   border-radius: var(--radius);
-  width: 100%;
 }
+input, textarea { width: 100%; }
+select { width: auto; }
 [data-theme="tarot"] input,
 [data-theme="tarot"] select,
 [data-theme="tarot"] textarea {
