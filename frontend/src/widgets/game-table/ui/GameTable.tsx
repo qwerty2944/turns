@@ -40,6 +40,7 @@ export const GameTable = () => {
   const roomId = sp.get("roomId") || undefined;
   const roomName = sp.get("name") || undefined;
   const maxPlayers = Number(sp.get("max")) || undefined;
+  const maskNicknames = sp.get("mask") === "1";
   const Table = game.Table;
 
   return (
@@ -49,6 +50,7 @@ export const GameTable = () => {
       roomName={roomName}
       maxPlayers={maxPlayers}
       asSpectator={asSpectator}
+      maskNicknames={maskNicknames}
     />
   );
 };

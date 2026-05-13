@@ -6,6 +6,7 @@ export type GameTableProps = {
   roomName?: string;
   maxPlayers?: number;
   asSpectator?: boolean;
+  maskNicknames?: boolean;
 };
 
 export type GameManifest = {

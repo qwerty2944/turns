@@ -19,6 +19,7 @@ type Props = {
   roomName?: string;
   maxPlayers?: number;
   asSpectator?: boolean;
+  maskNicknames?: boolean;
 };
 
 type StateSnap = {
@@ -132,6 +133,7 @@ export const MultitaskTable = (props: Props) => {
     displayName: props.roomName,
     maxPlayers: props.maxPlayers,
     asSpectator,
+    maskNicknames: props.maskNicknames,
   });
 
   const [stateSnap, setStateSnap] = useState<StateSnap | null>(null);
@@ -163,6 +165,7 @@ export const MultitaskTable = (props: Props) => {
   const phase = stateSnap?.phase ?? "lobby";
   const serverNowEst = now + offsetRef.current;
 
+  const difficulty = stateSnap?.difficulty ?? 1;
   const playerViews: PlayerView[] = useMemo(() => {
     return players.map((p: any) => ({
       sessionId: p.sessionId,
@@ -179,8 +182,9 @@ export const MultitaskTable = (props: Props) => {
       dodgeBlocks: p.dodgeBlocks ?? [],
       lastDamageAt: p.lastDamageAt ?? 0,
       serverNowEst,
+      difficulty,
     }));
-  }, [players, serverNowEst]);
+  }, [players, serverNowEst, difficulty]);
 
   const leave = () => {
     room?.leave().catch(() => {});

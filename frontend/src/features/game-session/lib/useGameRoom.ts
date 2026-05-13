@@ -12,6 +12,7 @@ type Options = {
   displayName?: string;
   maxPlayers?: number;
   asSpectator?: boolean;
+  maskNicknames?: boolean;
 };
 
 export type GameRoomStatus =
@@ -43,6 +44,7 @@ export const useGameRoom = (options: Options) => {
           roomName: o.displayName,
           maxPlayers: o.maxPlayers,
           ...(o.asSpectator ? { spectator: true } : {}),
+          ...(o.maskNicknames ? { maskNicknames: true } : {}),
         };
         if (o.mode === "create") {
           r = await client.create(o.roomName, joinOpts);

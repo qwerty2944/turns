@@ -31,6 +31,8 @@ export type PlayerView = {
   lastDamageAt: number;
   /** Estimated server time (ms) — used to interpolate falling blocks between server ticks. */
   serverNowEst?: number;
+  /** Current room difficulty (1..6). Used to gate which tasks render. */
+  difficulty?: number;
 };
 
 export type InputCallbacks = {
@@ -63,13 +65,41 @@ const DEFAULT_THEME: Theme = {
 export const BOARD_W = 220;
 export const BOARD_H = 420;
 
-// Layout regions (y ranges).
-const HOLD_TOP = 30;
-const HOLD_HEIGHT = 60;
-const TAP_TOP = 110;
-const TAP_HEIGHT = 150;
-const DODGE_TOP = 280;
-const DODGE_HEIGHT = 130;
+// Layout regions are computed per-frame from `difficulty` so a 1-task board
+// expands the hold bar to fill the canvas instead of leaving dead space.
+type Region = { top: number; height: number };
+type Layout = { hold: Region; tap: Region | null; dodge: Region | null };
+
+const REGION_TOP = 30;
+const REGION_BOTTOM = BOARD_H - 16; // leave hint row visible
+const REGION_GAP = 20;
+
+function computeLayout(diff: number): Layout {
+  const showTap = diff >= 2;
+  const showDodge = diff >= 3;
+  const total = REGION_BOTTOM - REGION_TOP;
+  if (!showTap && !showDodge) {
+    return { hold: { top: REGION_TOP, height: total }, tap: null, dodge: null };
+  }
+  if (!showDodge) {
+    // 2-task layout: hold takes the top ~28%, tap the rest.
+    const holdH = Math.floor(total * 0.28);
+    return {
+      hold: { top: REGION_TOP, height: holdH },
+      tap: {
+        top: REGION_TOP + holdH + REGION_GAP,
+        height: total - holdH - REGION_GAP,
+      },
+      dodge: null,
+    };
+  }
+  // 3-task default — matches the original fixed layout.
+  return {
+    hold: { top: 30, height: 60 },
+    tap: { top: 110, height: 150 },
+    dodge: { top: 280, height: 130 },
+  };
+}
 
 export class PlayerBoardScene extends Phaser.Scene {
   private theme: Theme = DEFAULT_THEME;
@@ -199,9 +229,10 @@ export class PlayerBoardScene extends Phaser.Scene {
     }
 
     this.g.clear();
-    this.drawHoldBar(v);
-    this.drawTapGrid(v, nowMs);
-    this.drawDodgeLane(v);
+    const layout = computeLayout(v.difficulty ?? 1);
+    this.drawHoldBar(v, layout.hold);
+    if (layout.tap) this.drawTapGrid(v, nowMs, layout.tap);
+    if (layout.dodge) this.drawDodgeLane(v, layout.dodge);
 
     // OUT overlay
     if (!v.alive) {
@@ -215,11 +246,11 @@ export class PlayerBoardScene extends Phaser.Scene {
 
   // ── Drawing ──────────────────────────────────────────────────────
 
-  private drawHoldBar(v: PlayerView) {
+  private drawHoldBar(v: PlayerView, region: Region) {
     const x = 10;
-    const y = HOLD_TOP;
+    const y = region.top;
     const w = BOARD_W - 20;
-    const h = HOLD_HEIGHT;
+    const h = region.height;
 
     // Track
     this.g.fillStyle(this.theme.panel, 1).fillRect(x, y, w, h);
@@ -240,14 +271,14 @@ export class PlayerBoardScene extends Phaser.Scene {
       .fillRect(ix - 2, y - 4, 4, h + 8);
   }
 
-  private drawTapGrid(v: PlayerView, nowMs: number) {
+  private drawTapGrid(v: PlayerView, nowMs: number, region: Region) {
     const x0 = 10;
-    const y0 = TAP_TOP;
+    const y0 = region.top;
     const w = BOARD_W - 20;
-    const h = TAP_HEIGHT;
-    const cellSize = Math.floor(Math.min(w, h) / 4);
-    const gridLeft = x0 + (w - cellSize * 4) / 2;
-    const gridTop = y0 + (h - cellSize * 4) / 2;
+    const h = region.height;
+    const cellSize = Math.floor(Math.min(w, h) / 3);
+    const gridLeft = x0 + (w - cellSize * 3) / 2;
+    const gridTop = y0 + (h - cellSize * 3) / 2;
 
     // Frame
     this.g
@@ -255,8 +286,8 @@ export class PlayerBoardScene extends Phaser.Scene {
       .fillRect(x0, y0, w, h);
 
     // Cells
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
         const cx = gridLeft + c * cellSize;
         const cy = gridTop + r * cellSize;
         this.g
@@ -267,8 +298,8 @@ export class PlayerBoardScene extends Phaser.Scene {
 
     // Active targets
     for (const t of v.tapTargets) {
-      const c = t.cell % 4;
-      const r = Math.floor(t.cell / 4);
+      const c = t.cell % 3;
+      const r = Math.floor(t.cell / 3);
       const cx = gridLeft + c * cellSize + cellSize / 2;
       const cy = gridTop + r * cellSize + cellSize / 2;
       const total = Math.max(1, t.expiresAt - t.spawnedAt);
@@ -282,11 +313,11 @@ export class PlayerBoardScene extends Phaser.Scene {
     }
   }
 
-  private drawDodgeLane(v: PlayerView) {
+  private drawDodgeLane(v: PlayerView, region: Region) {
     const x0 = 10;
-    const y0 = DODGE_TOP;
+    const y0 = region.top;
     const w = BOARD_W - 20;
-    const h = DODGE_HEIGHT;
+    const h = region.height;
     const colW = w / 3;
 
     // Lane background
@@ -358,29 +389,29 @@ export class PlayerBoardScene extends Phaser.Scene {
         const x = pointer.x;
         const y = pointer.y;
 
-        const inHold =
-          y >= HOLD_TOP && y <= HOLD_TOP + HOLD_HEIGHT && x >= 10 && x <= BOARD_W - 10;
-        const inTap =
-          y >= TAP_TOP && y <= TAP_TOP + TAP_HEIGHT && x >= 10 && x <= BOARD_W - 10;
-        const inDodge =
-          y >= DODGE_TOP && y <= DODGE_TOP + DODGE_HEIGHT && x >= 10 && x <= BOARD_W - 10;
+        const layout = computeLayout(v.difficulty ?? 1);
+        const inRegion = (r: Region | null) =>
+          !!r && y >= r.top && y <= r.top + r.height && x >= 10 && x <= BOARD_W - 10;
+        const inHold = inRegion(layout.hold);
+        const inTap = inRegion(layout.tap);
+        const inDodge = inRegion(layout.dodge);
 
         if (inHold) {
           this.callbacks.onHoldTap();
           return;
         }
 
-        if (inTap && dist < 12) {
+        if (inTap && layout.tap && dist < 12) {
           // Cell hit-testing must mirror the grid math.
           const w = BOARD_W - 20;
-          const h = TAP_HEIGHT;
-          const cellSize = Math.floor(Math.min(w, h) / 4);
-          const gridLeft = 10 + (w - cellSize * 4) / 2;
-          const gridTop = TAP_TOP + (h - cellSize * 4) / 2;
+          const h = layout.tap.height;
+          const cellSize = Math.floor(Math.min(w, h) / 3);
+          const gridLeft = 10 + (w - cellSize * 3) / 2;
+          const gridTop = layout.tap.top + (h - cellSize * 3) / 2;
           const c = Math.floor((x - gridLeft) / cellSize);
           const r = Math.floor((y - gridTop) / cellSize);
-          if (c >= 0 && c < 4 && r >= 0 && r < 4) {
-            this.callbacks.onTapCell(r * 4 + c);
+          if (c >= 0 && c < 3 && r >= 0 && r < 3) {
+            this.callbacks.onTapCell(r * 3 + c);
             return;
           }
         }
@@ -425,10 +456,8 @@ export class PlayerBoardScene extends Phaser.Scene {
       } else if (e.code.startsWith("Digit")) {
         const n = parseInt(e.code.slice(5), 10);
         if (n >= 1 && n <= 9) {
-          // 1..9 maps to top-left 3x3 region for keyboard play.
-          const idx = n - 1;
-          const cell = Math.floor(idx / 3) * 4 + (idx % 3);
-          this.callbacks.onTapCell(cell);
+          // 1..9 maps directly to 3×3 grid cells (row-major).
+          this.callbacks.onTapCell(n - 1);
         }
       }
     };

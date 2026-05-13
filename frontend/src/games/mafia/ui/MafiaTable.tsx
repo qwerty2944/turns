@@ -38,6 +38,7 @@ type Props = {
   roomName?: string;
   maxPlayers?: number;
   asSpectator?: boolean;
+  maskNicknames?: boolean;
 };
 
 export const MafiaTable = (props: Props) => {
@@ -52,6 +53,7 @@ export const MafiaTable = (props: Props) => {
     displayName: props.roomName,
     maxPlayers: props.maxPlayers,
     asSpectator,
+    maskNicknames: props.maskNicknames,
   });
 
   const [stateSnap, setStateSnap] = useState<MafiaStateView | null>(null);

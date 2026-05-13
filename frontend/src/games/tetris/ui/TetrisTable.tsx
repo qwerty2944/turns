@@ -29,6 +29,7 @@ type Props = {
   roomName?: string;
   maxPlayers?: number;
   asSpectator?: boolean;
+  maskNicknames?: boolean;
 };
 
 const DAS_MS = 150;
@@ -46,6 +47,7 @@ export const TetrisTable = (props: Props) => {
     displayName: props.roomName,
     maxPlayers: props.maxPlayers,
     asSpectator,
+    maskNicknames: props.maskNicknames,
   });
 
   const [stateSnap, setStateSnap] = useState<TetrisStateSnap | null>(null);

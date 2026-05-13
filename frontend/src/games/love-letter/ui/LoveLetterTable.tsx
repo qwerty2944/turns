@@ -23,6 +23,7 @@ type Props = {
   roomName?: string;
   maxPlayers?: number;
   asSpectator?: boolean;
+  maskNicknames?: boolean;
 };
 
 export const LoveLetterTable = (props: Props) => {
@@ -37,6 +38,7 @@ export const LoveLetterTable = (props: Props) => {
     displayName: props.roomName,
     maxPlayers: props.maxPlayers,
     asSpectator,
+    maskNicknames: props.maskNicknames,
   });
 
   const [stateSnap, setStateSnap] = useState<any>(null);

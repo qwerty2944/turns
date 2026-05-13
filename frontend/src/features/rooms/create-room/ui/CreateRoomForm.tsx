@@ -18,6 +18,7 @@ export const CreateRoomForm = ({ games }: Props) => {
 
   const [roomName, setRoomName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(game?.maxPlayers ?? 2);
+  const [maskNicknames, setMaskNicknames] = useState(false);
 
   const onGameChange = (id: string) => {
     setGameId(id);
@@ -33,6 +34,7 @@ export const CreateRoomForm = ({ games }: Props) => {
       name: roomName || `${user?.nickname ?? "Player"}의 방`,
       max: String(maxPlayers),
     });
+    if (maskNicknames) params.set("mask", "1");
     router.push(`/play?${params.toString()}`);
   };
 
@@ -81,6 +83,18 @@ export const CreateRoomForm = ({ games }: Props) => {
               <option key={n} value={n}>{n}명</option>
             ))}
           </select>
+        </label>
+        <label
+          className="row muted"
+          style={{ gap: 6, flex: "0 0 auto", whiteSpace: "nowrap", cursor: "pointer" }}
+          title="게임 시작 시 모든 플레이어의 닉네임을 랜덤 가명으로 가립니다"
+        >
+          <input
+            type="checkbox"
+            checked={maskNicknames}
+            onChange={(e) => setMaskNicknames(e.target.checked)}
+          />
+          닉네임 가리기
         </label>
         <button onClick={onCreate} disabled={!game?.available}>만들기</button>
       </div>
