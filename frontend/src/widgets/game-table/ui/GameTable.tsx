@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getGame } from "@/entities/game/model/registry";
 import { useAuthStore } from "@/entities/user/model/authStore";
+import { FullPageSpinner } from "@/shared/ui/Spinner";
 
 export const GameTable = () => {
   const router = useRouter();
@@ -16,11 +17,7 @@ export const GameTable = () => {
   }, [hydrated, token, router]);
 
   if (!hydrated) {
-    return (
-      <div className="play-shell">
-        <div className="panel"><p className="muted">불러오는 중…</p></div>
-      </div>
-    );
+    return <FullPageSpinner label="불러오는 중…" />;
   }
 
   const gameId = sp.get("game") || "love_letter";

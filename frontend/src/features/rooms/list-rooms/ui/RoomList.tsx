@@ -4,6 +4,7 @@ import { useRoomsQuery } from "../api";
 import { getGame } from "@/entities/game/model/registry";
 import type { RoomInfo } from "@/entities/room/api/rooms";
 import { extractApiError } from "@/shared/api/axios";
+import { Spinner } from "@/shared/ui/Spinner";
 
 type Props = {
   onJoin: (room: RoomInfo) => void;
@@ -18,7 +19,7 @@ export const RoomList = ({ onJoin }: Props) => {
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 className="title" style={{ margin: 0, fontSize: "1.2rem" }}>방 목록</h2>
         <button onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? "새로고침 중…" : "새로고침"}
+          {isFetching ? <Spinner size={14} label="새로고침" /> : "새로고침"}
         </button>
       </div>
       {error && <div className="error">{extractApiError(error)}</div>}

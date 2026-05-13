@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSignupMutation } from "../api";
 import { extractApiError } from "@/shared/api/axios";
+import { Spinner } from "@/shared/ui/Spinner";
 
 export const SignupForm = () => {
   const router = useRouter();
@@ -13,21 +14,22 @@ export const SignupForm = () => {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
-  const { mutateAsync, isPending } = useSignupMutation();
+  const { mutate, isPending } = useSignupMutation();
 
-  const onSubmit = async (e: FormEvent) => {
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
     if (password !== passwordConfirm) {
       setError("비밀번호가 일치하지 않습니다");
       return;
     }
-    try {
-      await mutateAsync({ email, password, passwordConfirm, nickname });
-      router.push("/lobby");
-    } catch (err) {
-      setError(extractApiError(err));
-    }
+    mutate(
+      { email, password, passwordConfirm, nickname },
+      {
+        onSuccess: () => router.replace("/lobby"),
+        onError: (err) => setError(extractApiError(err)),
+      },
+    );
   };
 
   return (
@@ -64,7 +66,7 @@ export const SignupForm = () => {
         </label>
         {error && <div className="error">{error}</div>}
         <button type="submit" disabled={isPending}>
-          {isPending ? "가입 중…" : "회원가입"}
+          {isPending ? <Spinner size={14} label="가입 중…" /> : "회원가입"}
         </button>
       </form>
       <div className="muted">

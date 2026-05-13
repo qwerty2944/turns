@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/entities/user/model/authStore";
 import { Lobby } from "@/widgets/lobby/ui/Lobby";
+import { FullPageSpinner } from "@/shared/ui/Spinner";
 
 export default function LobbyPage() {
   const router = useRouter();
@@ -14,12 +15,6 @@ export default function LobbyPage() {
     if (hydrated && !token) router.replace("/login");
   }, [hydrated, token, router]);
 
-  if (!hydrated || !token) {
-    return (
-      <div className="container-narrow">
-        <div className="panel"><p className="muted">불러오는 중…</p></div>
-      </div>
-    );
-  }
+  if (!hydrated || !token) return <FullPageSpinner label="불러오는 중…" />;
   return <Lobby />;
 }

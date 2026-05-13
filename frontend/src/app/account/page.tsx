@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/entities/user/model/authStore";
 import { ChangeNicknameForm } from "@/features/account/change-nickname/ui/ChangeNicknameForm";
 import { ChangePasswordForm } from "@/features/account/change-password/ui/ChangePasswordForm";
+import { ThemeSwitcher } from "@/features/theme-switcher/ui/ThemeSwitcher";
+import { FullPageSpinner } from "@/shared/ui/Spinner";
 
 const maskEmail = (email: string) => {
   const [local, domain] = email.split("@");
@@ -27,13 +29,7 @@ export default function AccountPage() {
   }, [hydrated, token, router]);
 
   if (!hydrated || !token || !user) {
-    return (
-      <div className="container-narrow">
-        <div className="panel">
-          <p className="muted">불러오는 중…</p>
-        </div>
-      </div>
-    );
+    return <FullPageSpinner label="불러오는 중…" />;
   }
 
   return (
@@ -43,9 +39,12 @@ export default function AccountPage() {
         style={{ justifyContent: "space-between", marginBottom: 16 }}
       >
         <h1 className="title" style={{ margin: 0 }}>내 정보</h1>
-        <Link href="/lobby">
-          <button>로비로</button>
-        </Link>
+        <div className="row" style={{ gap: 8 }}>
+          <ThemeSwitcher />
+          <Link href="/lobby">
+            <button>로비로</button>
+          </Link>
+        </div>
       </div>
 
       <div className="panel col" style={{ marginBottom: 16 }}>

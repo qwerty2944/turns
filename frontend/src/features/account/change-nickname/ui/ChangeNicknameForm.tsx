@@ -4,6 +4,7 @@ import { useState } from "react";
 import { authApi } from "@/entities/user/api/auth";
 import { useAuthStore } from "@/entities/user/model/authStore";
 import { extractApiError } from "@/shared/api/axios";
+import { Spinner } from "@/shared/ui/Spinner";
 
 export const ChangeNicknameForm = () => {
   const user = useAuthStore((s) => s.user);
@@ -55,7 +56,7 @@ export const ChangeNicknameForm = () => {
             nickname.trim() === user?.nickname
           }
         >
-          {submitting ? "저장 중…" : "저장"}
+          {submitting ? <Spinner size={14} label="저장 중…" /> : "저장"}
         </button>
       </div>
     </form>

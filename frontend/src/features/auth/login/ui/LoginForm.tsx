@@ -5,23 +5,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLoginMutation } from "../api";
 import { extractApiError } from "@/shared/api/axios";
+import { Spinner } from "@/shared/ui/Spinner";
 
 export const LoginForm = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { mutateAsync, isPending } = useLoginMutation();
+  const { mutate, isPending } = useLoginMutation();
   const [error, setError] = useState("");
 
-  const onSubmit = async (e: FormEvent) => {
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    try {
-      await mutateAsync({ email, password });
-      router.push("/lobby");
-    } catch (err) {
-      setError(extractApiError(err));
-    }
+    mutate(
+      { email, password },
+      {
+        onSuccess: () => router.replace("/lobby"),
+        onError: (err) => setError(extractApiError(err)),
+      },
+    );
   };
 
   return (
@@ -49,7 +51,7 @@ export const LoginForm = () => {
         </label>
         {error && <div className="error">{error}</div>}
         <button type="submit" disabled={isPending}>
-          {isPending ? "로그인 중…" : "로그인"}
+          {isPending ? <Spinner size={14} label="로그인 중…" /> : "로그인"}
         </button>
       </form>
       <div className="muted">

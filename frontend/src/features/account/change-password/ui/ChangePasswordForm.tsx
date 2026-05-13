@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { authApi } from "@/entities/user/api/auth";
 import { extractApiError } from "@/shared/api/axios";
+import { Spinner } from "@/shared/ui/Spinner";
 
 export const ChangePasswordForm = () => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -77,7 +78,7 @@ export const ChangePasswordForm = () => {
             submitting || !currentPassword || !newPassword || !confirmPassword
           }
         >
-          {submitting ? "변경 중…" : "변경"}
+          {submitting ? <Spinner size={14} label="변경 중…" /> : "변경"}
         </button>
       </div>
     </form>
