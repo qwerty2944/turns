@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   CARD,
   CARD_NAMES_KR,
@@ -9,7 +9,12 @@ import {
 } from "../model/cards";
 import { CardImage } from "./CardImage";
 
-type Target = { sessionId: string; nickname: string; eliminated: boolean; protected: boolean };
+type Target = {
+  sessionId: string;
+  nickname: string;
+  eliminated: boolean;
+  protected: boolean;
+};
 
 type Props = {
   card: number;
@@ -25,8 +30,13 @@ type Props = {
 };
 
 const GUARD_GUESS_OPTIONS = [
-  CARD.PRIEST, CARD.BARON, CARD.HANDMAID, CARD.PRINCE,
-  CARD.KING, CARD.COUNTESS, CARD.PRINCESS,
+  CARD.PRIEST,
+  CARD.BARON,
+  CARD.HANDMAID,
+  CARD.PRINCE,
+  CARD.KING,
+  CARD.COUNTESS,
+  CARD.PRINCESS,
 ];
 
 export const PlayCardModal = ({
@@ -37,24 +47,9 @@ export const PlayCardModal = ({
   onConfirm,
   onCancel,
 }: Props) => {
-  const needsTarget = cardNeedsTarget(card);
-  const allowSelfTarget = card === CARD.PRINCE;
-  const validTargets = targets.filter(
-    (t) =>
-      !t.eliminated &&
-      !t.protected &&
-      (allowSelfTarget || t.sessionId !== selfSessionId),
-  );
-  const everyoneProtected =
-    needsTarget && validTargets.filter((t) => t.sessionId !== selfSessionId).length === 0;
+  const [pickedTargetSid, setPickedTargetSid] = useState<string | null>(null);
 
-  const [targetSid, setTargetSid] = useState<string>("");
-  const [guess, setGuess] = useState<number>(CARD.PRIEST);
-
-  useEffect(() => {
-    if (validTargets.length > 0) setTargetSid(validTargets[0].sessionId);
-  }, [validTargets.length]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Countess rule blocks playing King/Prince — show a hint instead of letting them pick.
   if (myHandHasCountessRestriction && card !== CARD.COUNTESS) {
     return (
       <Backdrop onClose={onCancel}>
@@ -71,72 +66,113 @@ export const PlayCardModal = ({
     );
   }
 
-  const submit = () => {
-    if (needsTarget && !everyoneProtected) {
-      if (!targetSid) return;
-    }
-    onConfirm({
-      card,
-      targetSessionId: needsTarget && !everyoneProtected ? targetSid : undefined,
-      guardGuess: cardNeedsGuardGuess(card) ? guess : undefined,
-    });
-  };
+  const needsTarget = cardNeedsTarget(card);
+  const allowSelfTarget = card === CARD.PRINCE;
+  const validTargets = targets.filter(
+    (t) =>
+      !t.eliminated &&
+      !t.protected &&
+      (allowSelfTarget || t.sessionId !== selfSessionId),
+  );
+
+  // Show guard-guess step once a target is picked.
+  const showGuessStep = cardNeedsGuardGuess(card) && pickedTargetSid !== null;
 
   return (
     <Backdrop onClose={onCancel}>
       <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
-        <CardImage card={card} size={90} />
-        <div className="col" style={{ gap: 4 }}>
-          <h3 className="title" style={{ margin: 0 }}>{CARD_NAMES_KR[card]} 사용</h3>
-          {everyoneProtected && (
-            <p className="muted">대상이 모두 보호 또는 탈락 상태입니다. 효과 없이 버립니다.</p>
+        <CardImage card={card} size={90} noTooltip />
+        <div className="col" style={{ gap: 4, flex: 1 }}>
+          <h3 className="title" style={{ margin: 0 }}>
+            {CARD_NAMES_KR[card]} 사용
+          </h3>
+
+          {!needsTarget && (
+            <div className="col" style={{ gap: 10 }}>
+              <p className="muted" style={{ margin: 0 }}>
+                대상 없이 즉시 사용합니다.
+              </p>
+              <button onClick={() => onConfirm({ card })}>사용</button>
+            </div>
           )}
-          {needsTarget && !everyoneProtected && (
-            <label className="col" style={{ gap: 4 }}>
-              <span className="muted">대상</span>
-              <select
-                value={targetSid}
-                onChange={(e) => setTargetSid(e.target.value)}
-                style={selectStyle}
-              >
+
+          {needsTarget && validTargets.length === 0 && (
+            <div className="col" style={{ gap: 10 }}>
+              <p className="muted" style={{ margin: 0 }}>
+                지목할 수 있는 대상이 없습니다. 효과 없이 버립니다.
+              </p>
+              <button onClick={() => onConfirm({ card })}>사용</button>
+            </div>
+          )}
+
+          {needsTarget && validTargets.length > 0 && !showGuessStep && (
+            <>
+              <p className="muted" style={{ margin: 0 }}>
+                대상을 선택하세요 (클릭 즉시 사용)
+              </p>
+              <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
                 {validTargets.map((t) => (
-                  <option key={t.sessionId} value={t.sessionId}>
-                    {t.nickname}{t.sessionId === selfSessionId ? " (나)" : ""}
-                  </option>
+                  <button
+                    key={t.sessionId}
+                    className="target-card"
+                    onClick={() => {
+                      if (cardNeedsGuardGuess(card)) {
+                        // need another step (pick guessed card)
+                        setPickedTargetSid(t.sessionId);
+                      } else {
+                        onConfirm({ card, targetSessionId: t.sessionId });
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>
+                      {t.nickname}
+                      {t.sessionId === selfSessionId ? " (나)" : ""}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </>
           )}
-          {cardNeedsGuardGuess(card) && (
-            <label className="col" style={{ gap: 4 }}>
-              <span className="muted">추측할 카드 (병사 제외)</span>
-              <select
-                value={guess}
-                onChange={(e) => setGuess(Number(e.target.value))}
-                style={selectStyle}
+
+          {showGuessStep && (
+            <>
+              <p className="muted" style={{ margin: 0 }}>
+                추측할 카드를 클릭 (병사 제외)
+              </p>
+              <div
+                className="row"
+                style={{ flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}
               >
                 {GUARD_GUESS_OPTIONS.map((c) => (
-                  <option key={c} value={c}>{CARD_NAMES_KR[c]}</option>
+                  <button
+                    key={c}
+                    className="target-card"
+                    style={{ minWidth: 0 }}
+                    onClick={() =>
+                      onConfirm({
+                        card,
+                        targetSessionId: pickedTargetSid!,
+                        guardGuess: c,
+                      })
+                    }
+                  >
+                    <CardImage card={c} size={52} noTooltip />
+                    <span style={{ fontSize: 12 }}>
+                      {c}. {CARD_NAMES_KR[c]}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </>
           )}
         </div>
       </div>
-      <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
-        <button onClick={onCancel}>취소</button>
-        <button onClick={submit}>사용</button>
+
+      <div className="row" style={{ justifyContent: "flex-end", marginTop: 8 }}>
+        <button onClick={onCancel}>닫기</button>
       </div>
     </Backdrop>
   );
-};
-
-const selectStyle: React.CSSProperties = {
-  background: "rgba(13,10,31,0.6)",
-  border: "1px solid rgba(217,182,108,0.4)",
-  color: "var(--text)",
-  padding: "0.4rem",
-  borderRadius: 6,
 };
 
 const Backdrop = ({
@@ -161,7 +197,7 @@ const Backdrop = ({
     <div
       onClick={(e) => e.stopPropagation()}
       className="panel col"
-      style={{ maxWidth: 460, width: "92vw" }}
+      style={{ maxWidth: 520, width: "92vw" }}
     >
       {children}
     </div>

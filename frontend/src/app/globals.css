@@ -102,3 +102,58 @@ input:focus { outline: none; border-color: var(--gold); }
   margin: 2rem auto;
   padding: 0 1rem;
 }
+
+/* ─── Card hover tooltip ──────────────────────────────────────────── */
+.card-host {
+  position: relative;
+  display: inline-block;
+}
+.card-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(6px) scale(0.96);
+  display: flex;
+  gap: 12px;
+  width: 320px;
+  padding: 12px;
+  background: rgba(20, 13, 46, 0.98);
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6),
+              0 0 24px rgba(217, 182, 108, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 60;
+}
+.card-host:hover .card-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Pickable target highlight inside play modal */
+.target-card {
+  background: transparent;
+  border: 2px solid rgba(217, 182, 108, 0.45);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.12s ease,
+              box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  min-width: 90px;
+}
+.target-card:hover:not(:disabled) {
+  border-color: var(--gold-soft);
+  box-shadow: 0 0 0 1px var(--gold-soft), 0 0 16px rgba(217, 182, 108, 0.35);
+  transform: translateY(-2px);
+}
+.target-card:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Room } from "@colyseus/sdk";
 import { useGameRoom } from "@/features/game-session/lib/useGameRoom";
 import { useAuthStore } from "@/entities/user/model/authStore";
-import { CARD, CARD_NAMES_KR } from "../model/cards";
+import { CARD, CARD_NAMES_KR, cardNeedsTarget } from "../model/cards";
 import { PlayCardModal } from "./PlayCardModal";
 import { CardImage } from "./CardImage";
 import { ActionLog } from "./ActionLog";
@@ -132,7 +132,19 @@ export const LoveLetterTable = (props: Props) => {
             myHand={myHand}
             isMyTurn={isMyTurn && !me?.eliminated}
             myEliminated={!!me?.eliminated}
-            onPickCard={(c) => setPlaying(c)}
+            onPickCard={(c) => {
+              // Countess auto-discard rule still routed through the modal hint.
+              const restricted =
+                myHand.includes(CARD.COUNTESS) &&
+                (myHand.includes(CARD.KING) || myHand.includes(CARD.PRINCE)) &&
+                c !== CARD.COUNTESS;
+              // No-target cards (Handmaid, Countess, Princess) — just send.
+              if (!restricted && !cardNeedsTarget(c)) {
+                room?.send("playCard", { card: c });
+                return;
+              }
+              setPlaying(c);
+            }}
             myTokens={me?.tokens ?? 0}
             myNickname={user?.nickname ?? "나"}
             myProtected={!!me?.protected}
