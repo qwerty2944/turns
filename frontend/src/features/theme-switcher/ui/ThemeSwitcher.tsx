@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { THEMES, useThemeStore } from "@/shared/theme/themeStore";
 
 type Props = { compact?: boolean };
@@ -12,15 +12,65 @@ export const ThemeSwitcher = ({ compact = false }: Props) => {
 
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  // Viewport-fixed coords for the dropdown so it can never clip the screen
+  // when the trigger button sits near the left edge (mobile after row-wrap).
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+  const [narrow, setNarrow] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t)) return;
+      if (popoverRef.current?.contains(t)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+
+  // Measure button + popover and clamp horizontally inside the viewport.
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return;
+    }
+    const margin = 8;
+    const place = () => {
+      const wrap = wrapRef.current;
+      const pop = popoverRef.current;
+      if (!wrap || !pop) return;
+      const btn = wrap.getBoundingClientRect();
+      const popW = pop.offsetWidth;
+      const vw = window.innerWidth;
+      // Prefer right-aligned (popover's right edge matches button's right edge);
+      // fall back to clamping inside the viewport if that overflows.
+      let left = btn.right - popW;
+      if (left < margin) left = margin;
+      if (left + popW > vw - margin) left = Math.max(margin, vw - popW - margin);
+      const top = btn.bottom + 6;
+      setCoords({ top, left });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, narrow]);
 
   if (!hydrated) return null;
   const current = THEMES.find((t) => t.id === theme) ?? THEMES[0];
@@ -41,21 +91,28 @@ export const ThemeSwitcher = ({ compact = false }: Props) => {
       </button>
       {open && (
         <div
+          ref={popoverRef}
           role="listbox"
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            right: 0,
-            zIndex: 30,
+            position: "fixed",
+            top: coords?.top ?? -9999,
+            left: coords?.left ?? -9999,
+            // Hide popover off-screen until the first layout pass measures it,
+            // so users don't see a single-frame flash at the wrong position.
+            visibility: coords ? "visible" : "hidden",
+            zIndex: 100,
             display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(120px, 1fr))",
+            gridTemplateColumns: narrow
+              ? "minmax(140px, 1fr)"
+              : "repeat(2, minmax(120px, 1fr))",
             gap: 4,
             padding: 6,
             background: "var(--panel)",
             border: "2px solid var(--panel-border)",
             borderRadius: "var(--radius)",
             boxShadow: "var(--shadow-stepped)",
-            minWidth: 240,
+            minWidth: narrow ? 160 : 240,
+            maxWidth: "calc(100vw - 16px)",
           }}
         >
           {THEMES.map((t) => {
