@@ -463,8 +463,11 @@ input:focus, select:focus, textarea:focus {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 4px;
   padding: 4px;
-  max-height: 18dvh;
+  max-height: 12dvh;
   overflow-y: auto;
+}
+.multitask-others-tiny:empty {
+  display: none;
 }
 .multitask-tiny-card {
   padding: 4px 8px;
