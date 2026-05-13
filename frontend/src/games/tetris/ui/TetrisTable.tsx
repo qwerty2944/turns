@@ -318,29 +318,28 @@ export const TetrisTable = (props: Props) => {
             className="tetris-arena"
             style={{ position: "relative" }}
           >
-            <div className="tetris-mini-rail">
-              {opponents.map((op) => (
-                <div
-                  key={op.sessionId}
-                  className="tetris-mini-cell"
-                  ref={(el) => {
-                    // Wrap div doesn't expose getRect — store the handle via MiniBoard ref instead.
-                    if (!el) miniRefs.current.delete(op.sessionId);
-                  }}
-                >
-                  <MiniBoard
-                    board={op}
-                    ref={(h) => {
-                      if (h) miniRefs.current.set(op.sessionId, h);
-                      else miniRefs.current.delete(op.sessionId);
+            {opponents.length > 0 && (
+              <div className="tetris-mini-rail">
+                {opponents.map((op) => (
+                  <div
+                    key={op.sessionId}
+                    className="tetris-mini-cell"
+                    ref={(el) => {
+                      // Wrap div doesn't expose getRect — store the handle via MiniBoard ref instead.
+                      if (!el) miniRefs.current.delete(op.sessionId);
                     }}
-                  />
-                </div>
-              ))}
-              {opponents.length === 0 && (
-                <div className="muted" style={{ padding: 8 }}>상대 없음</div>
-              )}
-            </div>
+                  >
+                    <MiniBoard
+                      board={op}
+                      ref={(h) => {
+                        if (h) miniRefs.current.set(op.sessionId, h);
+                        else miniRefs.current.delete(op.sessionId);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="tetris-main">
               <div className="tetris-hud-left">
