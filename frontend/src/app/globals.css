@@ -430,8 +430,8 @@ input:focus, select:focus, textarea:focus {
   .play-side { grid-template-rows: auto auto auto; max-height: 38dvh; }
 }
 @media (max-width: 640px) {
-  .play-side { max-height: 28dvh; gap: 6px; }
-  .play-side > .panel { padding: 0.5rem 0.7rem; }
+  .play-side { max-height: 22dvh; gap: 4px; }
+  .play-side > .panel { padding: 0.4rem 0.6rem; }
 }
 
 /* ─── Multitask game grid ────────────────────────────────────────── */
@@ -786,32 +786,82 @@ input:focus, select:focus, textarea:focus {
     min-height: 110px;
   }
 }
+/* Phone-only arena layout: stats strip → optional mini rail → board → controls.
+   Skips the inner .tetris-main hud column and lets the board fill width. */
+.tetris-arena.tetris-arena--mobile {
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 4px;
+  padding: 4px;
+}
+.tetris-arena.tetris-arena--mobile .tetris-board-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Compact mobile-only stats strip used in the mobile tetris arena. */
+.tetris-mobile-stats {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  font-size: 11px;
+  min-height: 28px;
+  flex: 0 0 auto;
+}
+.tetris-mobile-stats-slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tetris-mobile-stats-label {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.tetris-mobile-stats-numbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
 @media (hover: none) and (pointer: coarse), (max-width: 640px) {
   .tetris-soft-controls {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-auto-rows: 44px;
-    gap: 5px;
-    padding: 6px 2px 0;
+    grid-auto-rows: 38px;
+    gap: 4px;
+    padding: 4px 2px 0;
   }
   .tetris-soft-btn {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.18));
     border-radius: 8px;
     color: var(--text);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     touch-action: none;
     user-select: none;
     padding: 0;
   }
   .tetris-soft-btn.big {
-    font-size: 22px;
+    font-size: 18px;
   }
   .tetris-soft-btn.wide {
     grid-column: span 3;
     background: linear-gradient(180deg, #facc15, #f97316);
     color: #000;
+    font-size: 16px;
   }
   .tetris-soft-btn:active {
     transform: translateY(1px);
@@ -822,11 +872,59 @@ input:focus, select:focus, textarea:focus {
   }
   /* Tighten mini rail spacing on phones */
   .tetris-mini-cell {
-    width: 64px;
-    min-height: 84px;
+    width: 60px;
+    min-height: 80px;
   }
   .tetris-arena {
-    gap: 6px;
-    padding: 6px;
+    gap: 4px;
+    padding: 4px;
   }
+}
+
+/* Mobile single-screen layout — fill the play-shell with no side panel.
+   Compact stats bar + opponent rail + big board + soft controls. */
+.tetris-arena--mobile {
+  height: 100%;
+  min-height: 0;
+  /* rows: stats · mini · board(fill) · soft controls */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 6px;
+}
+.tetris-arena--mobile .tetris-mini-rail {
+  max-height: 14dvh;
+}
+.tetris-arena--mobile .tetris-mini-cell {
+  width: 56px;
+  min-height: 0;
+  height: 100%;
+}
+.tetris-mobile-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  min-height: 0;
+}
+.tetris-mobile-stats-slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tetris-mobile-stats-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted, #94a3b8);
+}
+.tetris-mobile-stats-numbers {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 11px;
+  line-height: 1.2;
 }

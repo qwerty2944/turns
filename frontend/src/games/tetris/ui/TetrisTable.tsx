@@ -10,7 +10,7 @@ import { Board, type BoardHandle } from "./Board";
 import { MiniBoard, type MiniBoardHandle } from "./MiniBoard";
 import { SoftControls } from "./SoftControls";
 import { Hud } from "./Hud";
-import { KEY_BINDINGS } from "../model/pieces";
+import { KEY_BINDINGS, PIECE_COLOR, PIECE_SHAPES } from "../model/pieces";
 import type {
   InputAction,
   LineClearedMsg,
@@ -56,6 +56,7 @@ export const TetrisTable = (props: Props) => {
     until: number;
   } | null>(null);
   const [isTouch, setIsTouch] = useState(false);
+  const isMobile = useViewportIsMobile();
 
   const overlayRef = useRef<EffectsOverlayHandle | null>(null);
   const overlayWrapRef = useRef<HTMLDivElement | null>(null);
@@ -312,23 +313,17 @@ export const TetrisTable = (props: Props) => {
       )}
 
       {phase !== "lobby" && stateSnap && me && (
-        <div className="play-grid">
+        isMobile ? (
           <div
             ref={overlayWrapRef}
-            className="tetris-arena"
+            className="tetris-arena tetris-arena--mobile"
             style={{ position: "relative" }}
           >
+            <MobileStatsBar board={me} />
             {opponents.length > 0 && (
               <div className="tetris-mini-rail">
                 {opponents.map((op) => (
-                  <div
-                    key={op.sessionId}
-                    className="tetris-mini-cell"
-                    ref={(el) => {
-                      // Wrap div doesn't expose getRect — store the handle via MiniBoard ref instead.
-                      if (!el) miniRefs.current.delete(op.sessionId);
-                    }}
-                  >
+                  <div key={op.sessionId} className="tetris-mini-cell">
                     <MiniBoard
                       board={op}
                       ref={(h) => {
@@ -340,41 +335,80 @@ export const TetrisTable = (props: Props) => {
                 ))}
               </div>
             )}
-
-            <div className="tetris-main">
-              <div className="tetris-hud-left">
-                <Hud board={me} />
-              </div>
-              <div className="tetris-board-wrap">
-                <Board
-                  ref={myBoardRef}
-                  board={me}
-                  highlightRows={highlightRowsForMe}
-                />
-                {!me.alive && (
-                  <div className="tetris-game-over">💀 탈락</div>
-                )}
-              </div>
+            <div className="tetris-board-wrap">
+              <Board
+                ref={myBoardRef}
+                board={me}
+                highlightRows={highlightRowsForMe}
+              />
+              {!me.alive && (
+                <div className="tetris-game-over">💀 탈락</div>
+              )}
             </div>
-
             <SoftControls
               enabled={me.alive && phase === "playing"}
               onAction={sendAction}
             />
-
             <PhaserEffectsOverlay ref={overlayRef} />
           </div>
+        ) : (
+          <div className="play-grid">
+            <div
+              ref={overlayWrapRef}
+              className="tetris-arena"
+              style={{ position: "relative" }}
+            >
+              {opponents.length > 0 && (
+                <div className="tetris-mini-rail">
+                  {opponents.map((op) => (
+                    <div key={op.sessionId} className="tetris-mini-cell">
+                      <MiniBoard
+                        board={op}
+                        ref={(h) => {
+                          if (h) miniRefs.current.set(op.sessionId, h);
+                          else miniRefs.current.delete(op.sessionId);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
-          <div className="play-side">
-            <SidePanel
-              stateSnap={stateSnap}
-              meSid={meSid!}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              sendChat={sendChat}
-            />
+              <div className="tetris-main">
+                <div className="tetris-hud-left">
+                  <Hud board={me} />
+                </div>
+                <div className="tetris-board-wrap">
+                  <Board
+                    ref={myBoardRef}
+                    board={me}
+                    highlightRows={highlightRowsForMe}
+                  />
+                  {!me.alive && (
+                    <div className="tetris-game-over">💀 탈락</div>
+                  )}
+                </div>
+              </div>
+
+              <SoftControls
+                enabled={me.alive && phase === "playing"}
+                onAction={sendAction}
+              />
+
+              <PhaserEffectsOverlay ref={overlayRef} />
+            </div>
+
+            <div className="play-side">
+              <SidePanel
+                stateSnap={stateSnap}
+                meSid={meSid!}
+                chatInput={chatInput}
+                setChatInput={setChatInput}
+                sendChat={sendChat}
+              />
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {phase === "roundEnd" && stateSnap && (
@@ -652,6 +686,105 @@ const RoomClosedRedirect = () => {
       </p>
     </div>
   );
+};
+
+// Compact stats strip shown on mobile in place of the side HUD column.
+// Surface the few essentials a player can't play without: Hold, Next 3, score, lines.
+const MobileStatsBar = ({ board }: { board: PlayerBoardSnap }) => {
+  const next = board.nextQueue.slice(0, 3);
+  return (
+    <div className="tetris-mobile-stats">
+      <div className="tetris-mobile-stats-slot" aria-label="홀드">
+        <span className="tetris-mobile-stats-label">H</span>
+        <MiniPieceMark type={board.hold} dimmed={board.holdUsed} />
+      </div>
+      <div className="tetris-mobile-stats-slot" aria-label="다음">
+        <span className="tetris-mobile-stats-label">N</span>
+        {next.map((t, i) => (
+          <MiniPieceMark key={i} type={t} small={i > 0} />
+        ))}
+      </div>
+      <div className="tetris-mobile-stats-numbers">
+        <span>{board.score}</span>
+        <span className="muted">{board.lines}줄 · Lv {board.level}</span>
+        {board.incomingGarbage > 0 && (
+          <span style={{ color: "var(--danger, #ef4444)" }}>
+            ⚠ {board.incomingGarbage}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MiniPieceMark = ({
+  type,
+  small,
+  dimmed,
+}: {
+  type: number;
+  small?: boolean;
+  dimmed?: boolean;
+}) => {
+  const cell = small ? 4 : 6;
+  if (!type) {
+    return (
+      <span
+        style={{
+          display: "inline-block",
+          width: 4 * cell,
+          height: 2 * cell,
+          opacity: 0.25,
+          background: "rgba(255,255,255,0.04)",
+        }}
+      />
+    );
+  }
+  const shape = PIECE_SHAPES[type]?.[0] ?? [];
+  const minX = Math.min(...shape.map((c) => c[0]));
+  const minY = Math.min(...shape.map((c) => c[1]));
+  const w = (Math.max(...shape.map((c) => c[0])) - minX + 1) * cell;
+  const h = (Math.max(...shape.map((c) => c[1])) - minY + 1) * cell;
+  return (
+    <span
+      style={{
+        position: "relative",
+        display: "inline-block",
+        width: w,
+        height: h,
+        opacity: dimmed ? 0.4 : 1,
+      }}
+    >
+      {shape.map(([dx, dy], i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: (dx - minX) * cell,
+            top: (dy - minY) * cell,
+            width: cell,
+            height: cell,
+            background: PIECE_COLOR[type] ?? "#fff",
+          }}
+        />
+      ))}
+    </span>
+  );
+};
+
+const useViewportIsMobile = () => {
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 640px)").matches;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+  return isMobile;
 };
 
 const Modal = ({ children }: { children: React.ReactNode }) => (
