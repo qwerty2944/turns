@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import type { Room } from "@colyseus/sdk";
 import { useGameRoom } from "@/features/game-session/lib/useGameRoom";
 import { useAuthStore } from "@/entities/user/model/authStore";
@@ -9,6 +10,12 @@ import { CARD, CARD_NAMES_KR, cardNeedsTarget } from "../model/cards";
 import { PlayCardModal } from "./PlayCardModal";
 import { CardImage } from "./CardImage";
 import { ActionLog } from "./ActionLog";
+import type { EffectsOverlayHandle } from "./PhaserEffectsOverlay";
+
+// Phaser pulls in `window`; load only on the client.
+const PhaserEffectsOverlay = dynamic(() => import("./PhaserEffectsOverlay"), {
+  ssr: false,
+});
 
 type Props = {
   mode: "create" | "join";
@@ -36,6 +43,34 @@ export const LoveLetterTable = (props: Props) => {
   const [playing, setPlaying] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState("");
 
+  // ─── Phaser effects wiring ─── //
+  const overlayRef = useRef<EffectsOverlayHandle | null>(null);
+  const seatRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const myHandRef = useRef<HTMLDivElement | null>(null);
+  const deckRef = useRef<HTMLDivElement | null>(null);
+  const overlayWrapRef = useRef<HTMLDivElement | null>(null);
+  const lastSeenTsRef = useRef<number>(0);
+
+  const anchorFor = (sid?: string) => {
+    if (!sid) return undefined;
+    const wrap = overlayWrapRef.current;
+    if (!wrap) return undefined;
+    const target =
+      sid === room?.sessionId ? myHandRef.current : seatRefs.current.get(sid);
+    if (!target) return undefined;
+    const wr = wrap.getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
+    return { x: tr.left - wr.left + tr.width / 2, y: tr.top - wr.top + tr.height / 2 };
+  };
+
+  const sidByNickname = (nick?: string): string | undefined => {
+    if (!nick || !stateSnap) return undefined;
+    for (const p of Object.values(stateSnap.players) as any[]) {
+      if (p.nickname === nick) return p.sessionId;
+    }
+    return undefined;
+  };
+
   // Wire Colyseus state to React
   useEffect(() => {
     if (!room) return;
@@ -60,6 +95,64 @@ export const LoveLetterTable = (props: Props) => {
   useEffect(() => {
     if (stateSnap?.phase === "playing" && revealed) setRevealed(null);
   }, [stateSnap?.phase, revealed]);
+
+  // Dispatch Phaser effects when new server log entries arrive.
+  // Diff by `ts` (not length) so we survive the server's 200-entry truncation
+  // and don't re-fire backlog on reconnect.
+  useEffect(() => {
+    const log = stateSnap?.log;
+    if (!log || log.length === 0) return;
+    if (lastSeenTsRef.current === 0) {
+      // Skip everything that existed before we connected.
+      lastSeenTsRef.current = log[log.length - 1].ts;
+      return;
+    }
+    const seen = lastSeenTsRef.current;
+    let max = seen;
+    for (const e of log) {
+      if (e.ts <= seen) continue;
+      if (e.ts > max) max = e.ts;
+      dispatchEffect(e);
+    }
+    lastSeenTsRef.current = max;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateSnap?.log]);
+
+  const dispatchEffect = (e: any) => {
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+    const actorSid = sidByNickname(e.actor);
+    const targetSid = sidByNickname(e.target);
+    const actorAnchor = anchorFor(actorSid);
+    const targetAnchor = anchorFor(targetSid);
+
+    if (e.kind === "play" && actorAnchor) {
+      overlay.playEffect({
+        kind: "play",
+        card: e.card,
+        guess: e.guess || undefined,
+        actor: actorAnchor,
+        target: targetAnchor,
+      });
+    } else if (e.kind === "reveal") {
+      // Guard hit/miss heuristics — server text starts with 🎯 / ❌
+      if (typeof e.text === "string" && e.text.startsWith("🎯") && targetAnchor) {
+        overlay.playEffect({ kind: "guardHit", target: targetAnchor });
+      } else if (typeof e.text === "string" && e.text.startsWith("❌") && actorAnchor) {
+        overlay.playEffect({ kind: "guardMiss", actor: actorAnchor });
+      }
+    } else if (e.kind === "result") {
+      if (typeof e.text === "string" && e.text.includes("탈락") && actorAnchor) {
+        overlay.playEffect({ kind: "eliminated", seat: actorAnchor });
+      } else if (
+        typeof e.text === "string" &&
+        e.text.includes("라운드 승리") &&
+        actorAnchor
+      ) {
+        overlay.playEffect({ kind: "roundWin", seat: actorAnchor });
+      }
+    }
+  };
 
   const players: any[] = stateSnap ? Object.values(stateSnap.players) : [];
   const meSid = room?.sessionId;
@@ -148,6 +241,11 @@ export const LoveLetterTable = (props: Props) => {
             myTokens={me?.tokens ?? 0}
             myNickname={user?.nickname ?? "나"}
             myProtected={!!me?.protected}
+            seatRefs={seatRefs}
+            myHandRef={myHandRef}
+            deckRef={deckRef}
+            overlayWrapRef={overlayWrapRef}
+            overlayRef={overlayRef}
           />
 
           <div className="row" style={{ marginTop: 12, alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
@@ -282,6 +380,11 @@ const TableView = ({
   myTokens,
   myNickname,
   myProtected,
+  seatRefs,
+  myHandRef,
+  deckRef,
+  overlayWrapRef,
+  overlayRef,
 }: {
   opponents: OpponentView[];
   currentTurnSid?: string;
@@ -293,11 +396,18 @@ const TableView = ({
   myTokens: number;
   myNickname: string;
   myProtected: boolean;
+  seatRefs: React.MutableRefObject<Map<string, HTMLDivElement | null>>;
+  myHandRef: React.MutableRefObject<HTMLDivElement | null>;
+  deckRef: React.MutableRefObject<HTMLDivElement | null>;
+  overlayWrapRef: React.MutableRefObject<HTMLDivElement | null>;
+  overlayRef: React.MutableRefObject<EffectsOverlayHandle | null>;
 }) => {
   return (
     <div
+      ref={overlayWrapRef}
       className="panel"
       style={{
+        position: "relative",
         padding: 20,
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
@@ -321,12 +431,18 @@ const TableView = ({
           <span className="muted">상대를 기다리는 중…</span>
         )}
         {opponents.map((op) => (
-          <OpponentSeat key={op.sessionId} op={op} isTurn={op.sessionId === currentTurnSid} />
+          <OpponentSeat
+            key={op.sessionId}
+            op={op}
+            isTurn={op.sessionId === currentTurnSid}
+            registerRef={(el) => seatRefs.current.set(op.sessionId, el)}
+          />
         ))}
       </div>
 
       {/* Deck center */}
       <div
+        ref={deckRef}
         className="col"
         style={{ alignItems: "center", justifyContent: "center", gap: 6 }}
       >
@@ -336,7 +452,11 @@ const TableView = ({
 
       {/* My hand */}
       <div className="col" style={{ alignItems: "center", gap: 8 }}>
-        <div className="row" style={{ gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+        <div
+          ref={myHandRef}
+          className="row"
+          style={{ gap: 12, flexWrap: "wrap", justifyContent: "center" }}
+        >
           {myHand.length === 0 ? (
             <span className="muted">손패 없음</span>
           ) : (
@@ -388,12 +508,25 @@ const TableView = ({
           {myProtected && " 🛡"}
         </div>
       </div>
+
+      {/* Phaser effects overlay — animations only, no pointer events */}
+      <PhaserEffectsOverlay ref={overlayRef} />
     </div>
   );
 };
 
-const OpponentSeat = ({ op, isTurn }: { op: OpponentView; isTurn: boolean }) => (
+const OpponentSeat = ({
+  op,
+  isTurn,
+  registerRef,
+}: {
+  op: OpponentView;
+  isTurn: boolean;
+  registerRef: (el: HTMLDivElement | null) => void;
+}) => (
   <div
+    ref={registerRef}
+    data-sid={op.sessionId}
     className="col"
     style={{
       alignItems: "center",
