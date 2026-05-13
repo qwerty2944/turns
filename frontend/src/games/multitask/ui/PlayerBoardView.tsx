@@ -5,6 +5,7 @@ import type {
   InputCallbacks,
   PlayerView,
 } from "../scene/PlayerBoardScene";
+import { viewportHeightFor } from "../scene/PlayerBoardScene";
 
 type Props = {
   player: PlayerView;
@@ -116,7 +117,10 @@ export const PlayerBoardView = (props: Props) => {
     if (s && s.setPlayerView) s.setPlayerView(props.player);
   }, [props.player]);
 
-  const aspect = 220 / 420;
+  // Wrapper aspect ratio tracks the active region so a 1-task board doesn't
+  // leave dead space below the hold bar on mobile.
+  const activeH = viewportHeightFor(props.player.difficulty ?? 1);
+  const aspect = 220 / activeH;
   const style: React.CSSProperties =
     props.size === "large"
       ? {
@@ -131,6 +135,7 @@ export const PlayerBoardView = (props: Props) => {
           touchAction: "none",
           userSelect: "none",
           WebkitUserSelect: "none",
+          transition: "aspect-ratio 220ms ease",
         }
       : {
           width: "100%",
@@ -144,6 +149,7 @@ export const PlayerBoardView = (props: Props) => {
           touchAction: "none",
           userSelect: "none",
           WebkitUserSelect: "none",
+          transition: "aspect-ratio 220ms ease",
         };
 
   return <div ref={wrapRef} style={style} data-local={props.isLocal} />;

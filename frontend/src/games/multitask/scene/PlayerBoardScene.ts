@@ -65,40 +65,28 @@ const DEFAULT_THEME: Theme = {
 export const BOARD_W = 220;
 export const BOARD_H = 420;
 
-// Layout regions are computed per-frame from `difficulty` so a 1-task board
-// expands the hold bar to fill the canvas instead of leaving dead space.
+// Layout regions are fixed in world coords — the canvas height shrinks with
+// difficulty (see `viewportHeightFor` + setGameSize), so a 1-task board still
+// draws hold at its natural 60px height inside a short canvas.
 type Region = { top: number; height: number };
 type Layout = { hold: Region; tap: Region | null; dodge: Region | null };
-
-const REGION_TOP = 30;
-const REGION_BOTTOM = BOARD_H - 16; // leave hint row visible
-const REGION_GAP = 20;
 
 function computeLayout(diff: number): Layout {
   const showTap = diff >= 2;
   const showDodge = diff >= 3;
-  const total = REGION_BOTTOM - REGION_TOP;
-  if (!showTap && !showDodge) {
-    return { hold: { top: REGION_TOP, height: total }, tap: null, dodge: null };
-  }
-  if (!showDodge) {
-    // 2-task layout: hold takes the top ~28%, tap the rest.
-    const holdH = Math.floor(total * 0.28);
-    return {
-      hold: { top: REGION_TOP, height: holdH },
-      tap: {
-        top: REGION_TOP + holdH + REGION_GAP,
-        height: total - holdH - REGION_GAP,
-      },
-      dodge: null,
-    };
-  }
-  // 3-task default — matches the original fixed layout.
   return {
     hold: { top: 30, height: 60 },
-    tap: { top: 110, height: 150 },
-    dodge: { top: 280, height: 130 },
+    tap: showTap ? { top: 110, height: 150 } : null,
+    dodge: showDodge ? { top: 280, height: 130 } : null,
   };
+}
+
+/** Canvas viewport height (in world px) for a given difficulty / task count.
+ *  Trimmed so unused regions don't waste vertical space on the player card. */
+export function viewportHeightFor(diff: number): number {
+  if (diff < 2) return 110;          // header (30) + hold (60) + bottom hint pad (20)
+  if (diff < 3) return 280;          // header + hold + gap + tap
+  return BOARD_H;                    // full layout
 }
 
 export class PlayerBoardScene extends Phaser.Scene {
@@ -120,6 +108,7 @@ export class PlayerBoardScene extends Phaser.Scene {
   // pointer/swipe tracking for dodge lane
   private pointerStart: { x: number; y: number; t: number } | null = null;
   private lastShownDamageAt = 0;
+  private currentHeight = BOARD_H;
 
   constructor() {
     super("PlayerBoard");
@@ -206,6 +195,20 @@ export class PlayerBoardScene extends Phaser.Scene {
     if (!v) return;
     const nowMs = Date.now();
 
+    // Resize the canvas to the active region so unused space below the last
+    // task isn't visible. PlayerBoardView listens to the same difficulty and
+    // shrinks its wrapper aspect-ratio in sync.
+    const targetH = viewportHeightFor(v.difficulty ?? 1);
+    if (targetH !== this.currentHeight) {
+      this.currentHeight = targetH;
+      this.scale.resize(BOARD_W, targetH);
+      this.cameras.main.setViewport(0, 0, BOARD_W, targetH);
+      this.hintText.setPosition(BOARD_W / 2, targetH - 6);
+      this.damageFlash.setPosition(BOARD_W / 2, targetH / 2);
+      this.damageFlash.setSize(BOARD_W, targetH);
+      this.outText.setPosition(BOARD_W / 2, targetH / 2);
+    }
+
     // Header texts
     this.nicknameText.setText(v.nickname || "");
     this.heartsText.setText("❤".repeat(Math.max(0, v.hearts)));
@@ -236,6 +239,12 @@ export class PlayerBoardScene extends Phaser.Scene {
 
     // OUT overlay
     if (!v.alive) {
+      // Redraw OUT overlay to cover the current viewport height (it was sized
+      // to BOARD_H on first create but the canvas may have shrunk since).
+      this.outOverlay
+        .clear()
+        .fillStyle(0x000000, 0.55)
+        .fillRect(0, 0, BOARD_W, this.currentHeight);
       this.outOverlay.setVisible(true);
       this.outText.setVisible(true);
     } else {

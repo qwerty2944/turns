@@ -84,9 +84,25 @@ export const CreateRoomForm = ({ games }: Props) => {
             ))}
           </select>
         </label>
+      </div>
+      <div
+        className="row"
+        style={{
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
         <label
           className="row muted"
-          style={{ gap: 6, flex: "0 0 auto", whiteSpace: "nowrap", cursor: "pointer" }}
+          style={{
+            gap: 6,
+            flex: "1 1 auto",
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+          }}
           title="게임 시작 시 모든 플레이어의 닉네임을 랜덤 가명으로 가립니다"
         >
           <input
@@ -96,7 +112,13 @@ export const CreateRoomForm = ({ games }: Props) => {
           />
           닉네임 가리기
         </label>
-        <button onClick={onCreate} disabled={!game?.available}>만들기</button>
+        <button
+          onClick={onCreate}
+          disabled={!game?.available}
+          style={{ flex: "0 0 auto" }}
+        >
+          만들기
+        </button>
       </div>
       {game && <p className="muted" style={{ margin: 0 }}>{game.description}</p>}
     </div>
