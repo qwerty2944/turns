@@ -25,11 +25,24 @@ export const Lobby = () => {
 
   return (
     <div className="container-wide">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 16 }}>
+      <div
+        className="row row-wrap"
+        style={{ justifyContent: "space-between", marginBottom: 16, gap: 12 }}
+      >
         <h1 className="title" style={{ margin: 0 }}>로비</h1>
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
           <ThemeSwitcher compact />
-          <Link href="/account" className="muted" style={{ textDecoration: "underline" }}>
+          <Link
+            href="/account"
+            className="muted"
+            style={{
+              textDecoration: "underline",
+              maxWidth: 140,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {user?.nickname}
           </Link>
           <LogoutButton />

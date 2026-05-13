@@ -216,17 +216,32 @@ export const MafiaTable = (props: Props) => {
 
   return (
     <div className="play-shell">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h1 className="title" style={{ margin: 0, fontSize: "1.4rem" }}>
+      <div
+        className="row row-wrap"
+        style={{ justifyContent: "space-between", gap: 8 }}
+      >
+        <h1
+          className="title"
+          style={{
+            margin: 0,
+            fontSize: "clamp(1rem, 4vw, 1.4rem)",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: "1 1 0",
+          }}
+          title={stateSnap?.roomName ? `타뷸라의 늑대 · ${stateSnap.roomName}` : "타뷸라의 늑대"}
+        >
           타뷸라의 늑대 {stateSnap?.roomName ? `· ${stateSnap.roomName}` : ""}
         </h1>
-        <div className="row" style={{ gap: 12 }}>
+        <div className="row" style={{ gap: 8, flexShrink: 0 }}>
           {phase !== "lobby" && phase !== "gameEnd" && (
-            <span className="muted" style={{ fontFamily: "var(--font-display)", fontSize: 13 }}>
+            <span className="muted" style={{ fontFamily: "var(--font-display)", fontSize: 12 }}>
               {phaseLabel} · {secondsLeft}s
             </span>
           )}
-          <span className="muted">{user?.nickname}</span>
+          <span className="muted hide-sm">{user?.nickname}</span>
           <button onClick={leave}>나가기</button>
         </div>
       </div>

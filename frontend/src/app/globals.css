@@ -57,6 +57,114 @@
   --img-render: auto;
 }
 
+[data-theme="pixel-mint"] {
+  --bg: #0d2a2f;
+  --bg-2: #061a1e;
+  --bg-grid: rgba(255, 255, 255, 0.04);
+  --panel: #143f3f;
+  --panel-2: #0d3030;
+  --panel-border: #5be7c4;
+  --text: #e6fff5;
+  --muted: #7fb5a7;
+  --accent: #98ffd6;
+  --accent-strong: #b8ffe6;
+  --accent-press: #59d1a8;
+  --danger: #ff8b9d;
+  --danger-bg: rgba(255, 139, 157, 0.12);
+  --success: #98ffd6;
+  --link: #98ffd6;
+  --gold-soft: #98ffd6;
+  --gold: #59d1a8;
+
+  --font-body: "Galmuri11", "DungGeunMo", "Press Start 2P", monospace;
+  --font-display: "Press Start 2P", "Galmuri11", monospace;
+  --radius: 0px;
+  --shadow-stepped: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  --shadow-press: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  --img-render: auto;
+}
+
+[data-theme="pixel-rose"] {
+  --bg: #2a0d2f;
+  --bg-2: #1a061f;
+  --bg-grid: rgba(255, 255, 255, 0.04);
+  --panel: #3f1838;
+  --panel-2: #2e0f29;
+  --panel-border: #ff5d8f;
+  --text: #ffe6f0;
+  --muted: #b88aa3;
+  --accent: #ffb1cd;
+  --accent-strong: #ffd0e0;
+  --accent-press: #d97aa3;
+  --danger: #ff4d6d;
+  --danger-bg: rgba(255, 77, 109, 0.18);
+  --success: #b8ffe6;
+  --link: #ffb1cd;
+  --gold-soft: #ffb1cd;
+  --gold: #d97aa3;
+
+  --font-body: "Galmuri11", "DungGeunMo", "Press Start 2P", monospace;
+  --font-display: "Press Start 2P", "Galmuri11", monospace;
+  --radius: 0px;
+  --shadow-stepped: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  --shadow-press: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  --img-render: auto;
+}
+
+[data-theme="pixel-amber"] {
+  --bg: #2a1d0d;
+  --bg-2: #1a1106;
+  --bg-grid: rgba(255, 255, 255, 0.04);
+  --panel: #3f2814;
+  --panel-2: #2e1d0e;
+  --panel-border: #ffa845;
+  --text: #fff2dc;
+  --muted: #b89e7a;
+  --accent: #ffd28d;
+  --accent-strong: #ffe2b1;
+  --accent-press: #d9a256;
+  --danger: #ff7a5a;
+  --danger-bg: rgba(255, 122, 90, 0.16);
+  --success: #c4e98a;
+  --link: #ffd28d;
+  --gold-soft: #ffd28d;
+  --gold: #d9a256;
+
+  --font-body: "Galmuri11", "DungGeunMo", "Press Start 2P", monospace;
+  --font-display: "Press Start 2P", "Galmuri11", monospace;
+  --radius: 0px;
+  --shadow-stepped: 4px 4px 0 rgba(0, 0, 0, 0.6);
+  --shadow-press: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  --img-render: auto;
+}
+
+[data-theme="pixel-mono"] {
+  --bg: #0f380f;
+  --bg-2: #082008;
+  --bg-grid: rgba(155, 188, 15, 0.06);
+  --panel: #306230;
+  --panel-2: #1f4a1f;
+  --panel-border: #9bbc0f;
+  --text: #e0f8d0;
+  --muted: #8baf6f;
+  --accent: #9bbc0f;
+  --accent-strong: #c4e98a;
+  --accent-press: #6b8c0f;
+  --danger: #ff4d6d;
+  --danger-bg: rgba(255, 77, 109, 0.12);
+  --success: #9bbc0f;
+  --link: #9bbc0f;
+  --gold-soft: #9bbc0f;
+  --gold: #6b8c0f;
+
+  --font-body: "Galmuri11", "DungGeunMo", "Press Start 2P", monospace;
+  --font-display: "Press Start 2P", "Galmuri11", monospace;
+  --radius: 0px;
+  --shadow-stepped: 4px 4px 0 rgba(0, 0, 0, 0.7);
+  --shadow-press: 2px 2px 0 rgba(0, 0, 0, 0.7);
+  --img-render: auto;
+}
+
 [data-theme="tarot"] {
   --bg: #0d0a1f;
   --bg-2: #1a1334;
@@ -86,6 +194,34 @@
   --img-render: auto;
 }
 
+/* All non-tarot themes share the same pixel body background */
+[data-theme="pixel"] body,
+[data-theme="pixel-mint"] body,
+[data-theme="pixel-rose"] body,
+[data-theme="pixel-amber"] body,
+[data-theme="pixel-mono"] body {
+  background:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Korean syllables blow out with the global 0.08em letter-spacing under
+   the Galmuri pixel font — strip it for all pixel themes. */
+[data-theme="pixel"] .title,
+[data-theme="pixel-mint"] .title,
+[data-theme="pixel-rose"] .title,
+[data-theme="pixel-amber"] .title,
+[data-theme="pixel-mono"] .title { letter-spacing: 0; }
+[data-theme="pixel"] button,
+[data-theme="pixel-mint"] button,
+[data-theme="pixel-rose"] button,
+[data-theme="pixel-amber"] button,
+[data-theme="pixel-mono"] button { letter-spacing: 0; }
+
 /* ─── Base ───────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
@@ -98,15 +234,6 @@ html, body {
   min-height: 100dvh;
 }
 
-[data-theme="pixel"] body {
-  background:
-    linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0 / 16px 16px,
-    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0 / 16px 16px,
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  image-rendering: pixelated;
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: grayscale;
-}
 [data-theme="tarot"] body {
   background:
     radial-gradient(1200px 800px at 50% -10%, #2c1f5e 0%, transparent 70%),
@@ -247,6 +374,22 @@ input:focus, select:focus, textarea:focus {
   padding: 0 1rem;
 }
 
+/* ─── Mobile responsive tightening ───────────────────────────────── */
+@media (max-width: 640px) {
+  .container-wide { padding: 0 12px; margin: 12px auto; }
+  .container-narrow { margin: 2rem auto; }
+  .title { font-size: clamp(1rem, 5vw, 1.4rem); }
+  .panel { padding: 1rem; }
+}
+
+/* Tiny helper for header rows that should always wrap before overflowing */
+.row-wrap { flex-wrap: wrap; }
+
+/* Hide on small screens (use for redundant text in tight header bars) */
+@media (max-width: 640px) {
+  .hide-sm { display: none !important; }
+}
+
 /* ─── Play shell (game page) ─────────────────────────────────────── */
 .play-shell {
   height: 100dvh;
@@ -257,6 +400,9 @@ input:focus, select:focus, textarea:focus {
   grid-template-rows: auto 1fr;
   gap: 12px;
   overflow: hidden;
+}
+@media (max-width: 640px) {
+  .play-shell { padding: 8px 10px; gap: 8px; }
 }
 .play-grid {
   display: grid;

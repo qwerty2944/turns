@@ -185,12 +185,27 @@ export const LoveLetterTable = (props: Props) => {
 
   return (
     <div className="play-shell">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h1 className="title" style={{ margin: 0, fontSize: "1.4rem" }}>
+      <div
+        className="row row-wrap"
+        style={{ justifyContent: "space-between", gap: 8 }}
+      >
+        <h1
+          className="title"
+          style={{
+            margin: 0,
+            fontSize: "clamp(1rem, 4vw, 1.4rem)",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: "1 1 0",
+          }}
+          title={stateSnap?.roomName ? `러브레터 · ${stateSnap.roomName}` : "러브레터"}
+        >
           러브레터 {stateSnap?.roomName ? `· ${stateSnap.roomName}` : ""}
         </h1>
-        <div className="row">
-          <span className="muted">{user?.nickname}</span>
+        <div className="row" style={{ gap: 8, flexShrink: 0 }}>
+          <span className="muted hide-sm">{user?.nickname}</span>
           <button onClick={leave}>나가기</button>
         </div>
       </div>
@@ -591,15 +606,24 @@ const LobbyView = ({
             style={{
               justifyContent: "space-between",
               padding: "0.5rem 0.75rem",
-              border: "1px solid rgba(217,182,108,0.3)",
-              borderRadius: 6,
+              border: "1px solid var(--panel-border)",
+              borderRadius: "var(--radius)",
+              gap: 8,
+              minWidth: 0,
             }}
           >
-            <span>
+            <span
+              style={{
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {p.sessionId === state.hostSessionId && "👑 "}
               {p.nickname}{p.sessionId === meSid && " (나)"}
             </span>
-            <span className="muted">
+            <span className="muted" style={{ flexShrink: 0, fontSize: 13 }}>
               {p.sessionId === state.hostSessionId
                 ? "방장"
                 : p.ready
