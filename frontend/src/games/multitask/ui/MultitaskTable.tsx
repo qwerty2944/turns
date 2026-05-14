@@ -204,7 +204,16 @@ export const MultitaskTable = (props: Props) => {
     room?.send("input", { kind: "move", col });
   };
 
+  const [chatInput, setChatInput] = useState("");
+  const sendChat = () => {
+    const v = chatInput.trim();
+    if (!v) return;
+    room?.send("chat", v);
+    setChatInput("");
+  };
+
   const myView = playerViews.find((p) => p.sessionId === meSid);
+  const opponentViews = playerViews.filter((p) => p.sessionId !== meSid);
 
   const secondsLeft =
     stateSnap?.phase === "playing" && stateSnap.endsAt > 0
@@ -325,18 +334,45 @@ export const MultitaskTable = (props: Props) => {
             </div>
           </div>
         ) : (
-          <div className="multitask-grid">
-            {playerViews.map((p) => (
-              <PlayerBoardView
-                key={p.sessionId}
-                player={p}
-                isLocal={p.sessionId === meSid}
-                size="small"
-                onHoldTap={p.sessionId === meSid ? sendHold : undefined}
-                onTapCell={p.sessionId === meSid ? sendTap : undefined}
-                onMoveCol={p.sessionId === meSid ? sendMove : undefined}
+          <div className="play-grid">
+            <div className="multitask-pc-main">
+              {opponentViews.length > 0 && (
+                <div className="multitask-opponents-rail">
+                  {opponentViews.map((p) => (
+                    <div key={p.sessionId} className="multitask-opponent-cell">
+                      <PlayerBoardView
+                        player={p}
+                        isLocal={false}
+                        size="small"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="multitask-me-stage">
+                {myView ? (
+                  <PlayerBoardView
+                    player={myView}
+                    isLocal
+                    size="large"
+                    onHoldTap={sendHold}
+                    onTapCell={sendTap}
+                    onMoveCol={sendMove}
+                  />
+                ) : (
+                  <p className="muted">관전 모드</p>
+                )}
+              </div>
+            </div>
+            <div className="play-side">
+              <ActionLog log={stateSnap.log} />
+              <ChatBox
+                value={chatInput}
+                onChange={setChatInput}
+                onSubmit={sendChat}
               />
-            ))}
+              <ScorePanel players={players as any[]} meSid={meSid!} />
+            </div>
           </div>
         )
       )}
@@ -477,6 +513,40 @@ const LobbyView = ({
     </div>
   );
 };
+
+const ChatBox = ({
+  value,
+  onChange,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+}) => (
+  <form
+    className="panel row"
+    style={{ gap: 8 }}
+    onSubmit={(e) => {
+      e.preventDefault();
+      onSubmit();
+    }}
+  >
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="채팅 입력… (Enter)"
+      maxLength={120}
+      style={{ flex: "1 1 auto", minWidth: 0 }}
+    />
+    <button
+      type="submit"
+      disabled={!value.trim()}
+      style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+    >
+      전송
+    </button>
+  </form>
+);
 
 const ActionLog = ({ log }: { log: any[] }) => {
   const ref = useRef<HTMLDivElement | null>(null);
