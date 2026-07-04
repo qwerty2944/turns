@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import 'auth_notifier.dart';
+import 'widgets/password_field.dart';
 
 class SignupPage extends ConsumerStatefulWidget {
   const SignupPage({super.key});
@@ -83,21 +84,15 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      PasswordField(
                         controller: _password,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: '비밀번호 (6자 이상)',
-                        ),
+                        hintText: '비밀번호 (6자 이상)',
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      PasswordField(
                         controller: _passwordConfirm,
-                        obscureText: true,
-                        decoration:
-                            const InputDecoration(labelText: '비밀번호 확인'),
-                        textInputAction: TextInputAction.done,
+                        hintText: '비밀번호 확인',
                         onSubmitted: (_) => _submit(),
                       ),
                       if (_error != null) ...[

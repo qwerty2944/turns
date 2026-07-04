@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 /// Plain immutable model — hand-written json so both `id` (login/signup)
 /// and the legacy `userId` (older /auth/me) server shapes parse.

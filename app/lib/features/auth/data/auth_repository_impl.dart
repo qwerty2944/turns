@@ -39,8 +39,8 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) async {
-    final res =
-        await _api.login(LoginRequest(email: email, password: password));
+    final res = await _api
+        .login(LoginRequest(email: email, password: password).toJson());
     await _storage.saveSession(res.token, res.user.toJson());
     return (token: res.token, user: res.user);
   }
@@ -57,7 +57,7 @@ class AuthRepositoryImpl implements AuthRepository {
       password: password,
       passwordConfirm: passwordConfirm,
       nickname: (nickname == null || nickname.isEmpty) ? null : nickname,
-    ));
+    ).toJson());
     await _storage.saveSession(res.token, res.user.toJson());
     return (token: res.token, user: res.user);
   }
