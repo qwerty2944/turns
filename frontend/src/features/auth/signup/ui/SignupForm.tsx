@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSignupMutation } from "../api";
 import { extractApiError } from "@/shared/api/axios";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 import { Spinner } from "@/shared/ui/Spinner";
 
 export const SignupForm = () => {
@@ -33,21 +34,25 @@ export const SignupForm = () => {
   };
 
   return (
-    <div className="panel col">
-      <h1 className="title" style={{ margin: 0 }}>회원가입</h1>
+    <div className="auth-card">
+      <div className="auth-logo">
+        <span className="auth-logo-emoji">🃏🎲</span>
+        <div className="auth-logo-text">턴 즈</div>
+        <div className="auth-logo-sub">─ 새 플레이어 등록 ─</div>
+      </div>
+      <div className="panel col">
       <form className="col" onSubmit={onSubmit}>
         <label className="col" style={{ gap: 4 }}>
-          <span className="muted">이메일</span>
+          <span className="auth-field-label">◆ 이메일</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <label className="col" style={{ gap: 4 }}>
-          <span className="muted">닉네임 (선택)</span>
+          <span className="auth-field-label">◆ 닉네임 (선택)</span>
           <input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={12} />
         </label>
         <label className="col" style={{ gap: 4 }}>
-          <span className="muted">비밀번호 (6자 이상)</span>
-          <input
-            type="password"
+          <span className="auth-field-label">◆ 비밀번호 (6자 이상)</span>
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
@@ -55,9 +60,8 @@ export const SignupForm = () => {
           />
         </label>
         <label className="col" style={{ gap: 4 }}>
-          <span className="muted">비밀번호 확인</span>
-          <input
-            type="password"
+          <span className="auth-field-label">◆ 비밀번호 확인</span>
+          <PasswordInput
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
             minLength={6}
@@ -65,12 +69,13 @@ export const SignupForm = () => {
           />
         </label>
         {error && <div className="error">{error}</div>}
-        <button type="submit" disabled={isPending}>
-          {isPending ? <Spinner size={14} label="가입 중…" /> : "회원가입"}
+        <button type="submit" className="auth-submit" disabled={isPending}>
+          {isPending ? <Spinner size={14} label="가입 중…" /> : "▶ 플레이어 등록"}
         </button>
       </form>
-      <div className="muted">
+      <div className="auth-foot">
         이미 계정이 있나요? <Link href="/login">로그인</Link>
+      </div>
       </div>
     </div>
   );

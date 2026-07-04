@@ -1,7 +1,7 @@
 "use client";
 
 import { useRoomsQuery } from "../api";
-import { getGame } from "@/entities/game/model/registry";
+import { GAME_EMOJI, getGame } from "@/entities/game/model/registry";
 import type { RoomInfo } from "@/entities/room/api/rooms";
 import { extractApiError } from "@/shared/api/axios";
 import { Spinner } from "@/shared/ui/Spinner";
@@ -35,7 +35,7 @@ export const RoomList = ({ onJoin, onSpectate }: Props) => {
             return (
               <div
                 key={r.roomId}
-                className="row row-wrap"
+                className="row row-wrap room-row"
                 style={{
                   justifyContent: "space-between",
                   padding: "0.6rem 0.8rem",
@@ -44,6 +44,9 @@ export const RoomList = ({ onJoin, onSpectate }: Props) => {
                   gap: 8,
                 }}
               >
+                <span className="room-emoji" aria-hidden>
+                  {GAME_EMOJI[r.game] ?? "🎲"}
+                </span>
                 <div className="col" style={{ gap: 2, minWidth: 0, flex: "1 1 0" }}>
                   <strong
                     style={{

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLoginMutation } from "../api";
 import { recentEmails } from "../lib/recentEmails";
 import { extractApiError } from "@/shared/api/axios";
+import { PasswordInput } from "@/shared/ui/PasswordInput";
 import { Spinner } from "@/shared/ui/Spinner";
 
 export const LoginForm = () => {
@@ -60,12 +61,16 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="panel col">
-      <h1 className="title" style={{ margin: 0 }}>Turns</h1>
-      <p className="muted" style={{ marginTop: -8 }}>보드게임 매칭</p>
+    <div className="auth-card">
+      <div className="auth-logo">
+        <span className="auth-logo-emoji">🃏🎲</span>
+        <div className="auth-logo-text">턴 즈</div>
+        <div className="auth-logo-sub">─ 보드게임 온라인 매칭 ─</div>
+      </div>
+      <div className="panel col">
       <form className="col" onSubmit={onSubmit}>
         <label className="col" style={{ gap: 4 }}>
-          <span className="muted">이메일</span>
+          <span className="auth-field-label">◆ 이메일</span>
           <div ref={emailWrapRef} style={{ position: "relative" }}>
             <input
               type="email"
@@ -153,22 +158,23 @@ export const LoginForm = () => {
           </div>
         </label>
         <label className="col" style={{ gap: 4 }}>
-          <span className="muted">비밀번호</span>
-          <input
-            type="password"
+          <span className="auth-field-label">◆ 비밀번호</span>
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
         </label>
         {error && <div className="error">{error}</div>}
-        <button type="submit" disabled={isPending}>
-          {isPending ? <Spinner size={14} label="로그인 중…" /> : "로그인"}
+        <button type="submit" className="auth-submit" disabled={isPending}>
+          {isPending ? <Spinner size={14} label="접속 중…" /> : "▶ 게임 시작"}
         </button>
       </form>
-      <div className="muted">
-        계정이 없나요? <Link href="/signup">회원가입</Link>
+      <div className="auth-foot">
+        처음이신가요? <Link href="/signup">+ 새 계정 만들기</Link>
       </div>
+      </div>
+      <div className="auth-hint">앱 유저와 같은 방에서 만나요 · 크로스플레이 지원</div>
     </div>
   );
 };

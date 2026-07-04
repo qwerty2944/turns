@@ -19,7 +19,8 @@ export default function LoginPage() {
   if (token) return null;
 
   return (
-    <div className="container-narrow">
+    <div className="auth-shell">
+      <div className="landing-stars" aria-hidden="true" />
       <LoginForm />
     </div>
   );

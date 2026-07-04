@@ -16,3 +16,12 @@ export const GAME_REGISTRY: GameManifest[] = [
 
 export const getGame = (id: string) =>
   GAME_REGISTRY.find((g) => g.id === id);
+
+/** Display emoji per game (lobby chips, room list). */
+export const GAME_EMOJI: Record<string, string> = {
+  love_letter: "💌",
+  yeouido: "🏛️",
+  mafia: "🐺",
+  tetris: "🧱",
+  multitask: "🤹",
+};

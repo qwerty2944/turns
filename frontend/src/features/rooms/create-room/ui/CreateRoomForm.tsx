@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GAME_EMOJI } from "@/entities/game/model/registry";
 import type { GameManifest } from "@/entities/game/model/types";
 import { useAuthStore } from "@/entities/user/model/authStore";
 
@@ -46,23 +47,27 @@ export const CreateRoomForm = ({ games }: Props) => {
   return (
     <div className="panel col">
       <h2 className="title" style={{ margin: 0, fontSize: "1.2rem" }}>방 만들기</h2>
-      <div className="row" style={{ flexWrap: "wrap", alignItems: "center" }}>
-        <label
-          className="row muted"
-          style={{ gap: 6, flex: "0 0 auto", whiteSpace: "nowrap" }}
-        >
-          게임
-          <select
-            value={gameId}
-            onChange={(e) => onGameChange(e.target.value)}
+      <div className="game-chip-row" role="radiogroup" aria-label="게임 선택">
+        {games.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            role="radio"
+            aria-checked={g.id === gameId}
+            className={`game-chip${g.id === gameId ? " game-chip--active" : ""}${
+              g.available ? "" : " game-chip--disabled"
+            }`}
+            disabled={!g.available}
+            onClick={() => onGameChange(g.id)}
+            title={g.available ? g.displayName : `${g.displayName} (준비중)`}
           >
-            {games.map((g) => (
-              <option key={g.id} value={g.id} disabled={!g.available}>
-                {g.displayName} {!g.available && "(준비중)"}
-              </option>
-            ))}
-          </select>
-        </label>
+            <span className="game-chip-emoji">{GAME_EMOJI[g.id] ?? "🎲"}</span>
+            <span>{g.displayName}</span>
+          </button>
+        ))}
+      </div>
+      {game && <p className="muted" style={{ margin: 0, fontSize: 13 }}>{game.description}</p>}
+      <div className="row" style={{ flexWrap: "wrap", alignItems: "center" }}>
         <input
           placeholder="방 이름"
           value={roomName}
@@ -110,7 +115,6 @@ export const CreateRoomForm = ({ games }: Props) => {
           만들기
         </button>
       </div>
-      {game && <p className="muted" style={{ margin: 0 }}>{game.description}</p>}
     </div>
   );
 };
