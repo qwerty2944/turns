@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import type { Room } from "@colyseus/sdk";
 import { useGameRoom } from "@/features/game-session/lib/useGameRoom";
+import { useAppLobby } from "@/shared/lib/useAppLobby";
 import { useAuthStore } from "@/entities/user/model/authStore";
 import { CARD } from "../model/cards";
 import { logToAnnouncement } from "../model/announcements";
@@ -198,6 +199,34 @@ export const LoveLetterTable = (props: Props) => {
   const me = players.find((p) => p.sessionId === meSid);
   const opponents = players.filter((p) => p.sessionId !== meSid);
   const isHost = stateSnap?.hostSessionId === meSid;
+  // ─── Flutter 앱 네이티브 대기실 브릿지 (게임 시작 전 로비는 앱 UI가 담당) ───
+  const appLobbySnap = useMemo(
+    () =>
+      stateSnap
+        ? {
+            game: "love_letter",
+            phase: stateSnap.phase ?? "lobby",
+            meSid: room?.sessionId ?? "",
+            hostSid: stateSnap.hostSessionId ?? "",
+            players: Object.values(stateSnap.players ?? {}).map((p: any) => ({
+              sid: p.sessionId,
+              nickname: p.nickname,
+              ready: !!p.ready,
+              connected: p.connected !== false,
+            })),
+            log: (stateSnap.log ?? []).slice(-40).map((e: any) => ({
+              ts: e.ts ?? 0,
+              kind: e.kind ?? "info",
+              text: e.text ?? "",
+              actor: e.actor ?? "",
+            })),
+          }
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stateSnap, room],
+  );
+  useAppLobby(room as any, appLobbySnap);
+
   const isMyTurn = stateSnap?.turnOrder?.[stateSnap.turnIndex] === meSid;
   const currentTurnSid: string | undefined =
     stateSnap?.turnOrder?.[stateSnap.turnIndex];

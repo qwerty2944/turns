@@ -1,27 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../lobby/domain/game_meta.dart';
 import 'lobby_bridge.dart';
 
-/// Native pre-game lobby for 여의도 대전 — faction pick, ready/start, chat.
-/// Rendered OVER the hidden WebView; commands go back down the JS bridge.
-class YeouidoLobbyView extends StatefulWidget {
-  const YeouidoLobbyView({
+/// Native pre-game lobby for EVERY game — players/ready/start/chat, plus a
+/// faction picker for 여의도 대전. Rendered OVER the hidden WebView; commands
+/// go back down the JS bridge, so game-start logic stays native and Phaser
+/// only takes over once the match begins.
+class NativeLobbyView extends StatefulWidget {
+  const NativeLobbyView({
     super.key,
     required this.snap,
+    required this.meta,
     required this.onCommand,
     required this.onLeave,
   });
 
   final LobbySnap snap;
+  final GameMeta? meta;
   final void Function(String name, [Object? payload]) onCommand;
   final VoidCallback onLeave;
 
   @override
-  State<YeouidoLobbyView> createState() => _YeouidoLobbyViewState();
+  State<NativeLobbyView> createState() => _NativeLobbyViewState();
 }
 
-class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
+class _NativeLobbyViewState extends State<NativeLobbyView> {
   final _chat = TextEditingController();
   final _scroll = ScrollController();
   int _lastLogLen = 0;
@@ -34,7 +39,7 @@ class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
   }
 
   @override
-  void didUpdateWidget(covariant YeouidoLobbyView old) {
+  void didUpdateWidget(covariant NativeLobbyView old) {
     super.didUpdateWidget(old);
     // Stick to the bottom when new chat/log lands.
     if (widget.snap.log.length != _lastLogLen) {
@@ -62,11 +67,15 @@ class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
   Widget build(BuildContext context) {
     final snap = widget.snap;
     final me = snap.me;
-    final bothPicked =
-        snap.players.length == 2 && snap.players.every((p) => p.faction.isNotEmpty);
+    final isYeouido = snap.game == 'yeouido';
+    final minPlayers = widget.meta?.minPlayers ?? 2;
+    final enoughPlayers = snap.players.length >= minPlayers;
+    final bothPicked = !isYeouido ||
+        (snap.players.length == 2 &&
+            snap.players.every((p) => p.faction.isNotEmpty));
     final allReady =
         snap.players.every((p) => p.ready || p.sid == snap.hostSid);
-    final canStart = snap.isHost && bothPicked && allReady;
+    final canStart = snap.isHost && enoughPlayers && bothPicked && allReady;
 
     return Container(
       color: AppColors.bg,
@@ -78,10 +87,12 @@ class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
               padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      '🏛️ 후보 등록',
-                      style: TextStyle(
+                      isYeouido
+                          ? '🏛️ 후보 등록'
+                          : '${widget.meta?.emoji ?? '🎲'} ${widget.meta?.displayName ?? ''} 대기실',
+                      style: const TextStyle(
                         color: AppColors.accent,
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
@@ -97,19 +108,23 @@ class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '진영을 선택하고 준비하세요. 두 후보가 모이면 방장이 선거를 시작합니다.',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.5),
+                  isYeouido
+                      ? '진영을 선택하고 준비하세요. 두 후보가 모이면 방장이 선거를 시작합니다.'
+                      : '모두 준비되면 방장이 시작합니다. (${snap.players.length}/$minPlayers명 이상)',
+                  style: const TextStyle(
+                      color: AppColors.muted, fontSize: 12, height: 1.5),
                 ),
               ),
             ),
             const SizedBox(height: 10),
 
-            // ── faction cards ──
+            // ── faction cards (여의도 대전 전용) ──
+            if (isYeouido)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Row(
@@ -312,7 +327,7 @@ class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
                                   color: AppColors.success, width: 2)
                               : BorderSide.none,
                         ),
-                        onPressed: (me?.faction.isNotEmpty ?? false)
+                        onPressed: (!isYeouido || (me?.faction.isNotEmpty ?? false))
                             ? () => widget.onCommand('toggleReady')
                             : null,
                         child: Text(
@@ -326,8 +341,10 @@ class _YeouidoLobbyViewState extends State<YeouidoLobbyView> {
                             ? () => widget.onCommand('startGame')
                             : null,
                         child: Text(canStart
-                            ? '▶ 선거 시작'
-                            : (bothPicked ? '상대 준비 대기 중…' : '진영 선택 대기 중…')),
+                            ? (isYeouido ? '▶ 선거 시작' : '▶ 게임 시작')
+                            : !enoughPlayers
+                                ? '플레이어 대기 중…'
+                                : (bothPicked ? '준비 대기 중…' : '진영 선택 대기 중…')),
                       ),
                     ),
                 ],

@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
 import type { Room } from "@colyseus/sdk";
 import { useGameRoom } from "@/features/game-session/lib/useGameRoom";
 import { useAuthStore } from "@/entities/user/model/authStore";
-import { isInApp, postToApp, registerAppCommands } from "@/shared/lib/appBridge";
+import { useAppLobby } from "@/shared/lib/useAppLobby";
 import { cardArt, cardView, FACTION_META } from "../model/cards";
 import {
   toSnap,
@@ -215,41 +215,35 @@ export const YeouidoTable = (props: Props) => {
   }, [room, onSnap, onFxBatch]);
 
   // ─── Flutter app bridge: native pre-game lobby drives this hidden page ───
-  useEffect(() => {
-    if (!room || !isInApp()) return;
-    return registerAppCommands({
-      pickFaction: (p) =>
-        room.send("pickFaction", { faction: (p as { faction?: string })?.faction }),
-      toggleReady: () => room.send("toggleReady"),
-      startGame: () => room.send("startGame"),
-      chat: (p) => {
-        if (typeof p === "string" && p.trim()) room.send("chat", p.trim());
-      },
-    });
-  }, [room]);
-
-  useEffect(() => {
-    if (!snap || !isInApp()) return;
-    postToApp("turnsState", {
-      game: "yeouido",
-      phase: snap.phase,
-      meSid: room?.sessionId ?? "",
-      hostSid: snap.hostSessionId,
-      players: Object.values(snap.players).map((p) => ({
-        sid: p.sessionId,
-        nickname: p.nickname,
-        faction: p.faction,
-        ready: p.ready,
-        connected: p.connected,
-      })),
-      log: snap.log.slice(-40).map((e) => ({
-        ts: e.ts,
-        kind: e.kind,
-        text: e.text,
-        actor: e.actor,
-      })),
-    });
-  }, [snap, room]);
+  const appLobbySnap = useMemo(
+    () =>
+      snap
+        ? {
+            game: "yeouido",
+            phase: snap.phase,
+            meSid: room?.sessionId ?? "",
+            hostSid: snap.hostSessionId,
+            players: Object.values(snap.players).map((p) => ({
+              sid: p.sessionId,
+              nickname: p.nickname,
+              faction: p.faction,
+              ready: p.ready,
+              connected: p.connected,
+            })),
+            log: snap.log.slice(-40).map((e) => ({
+              ts: e.ts,
+              kind: e.kind,
+              text: e.text,
+              actor: e.actor,
+            })),
+          }
+        : null,
+    [snap, room],
+  );
+  useAppLobby(room, appLobbySnap, {
+    pickFaction: (p) =>
+      room?.send("pickFaction", { faction: (p as { faction?: string })?.faction }),
+  });
 
   // ─── derived ───
   const phase = snap?.phase ?? "lobby";

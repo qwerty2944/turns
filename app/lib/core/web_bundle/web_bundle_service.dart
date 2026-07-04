@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:flutter/services.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -39,9 +38,18 @@ class WebBundleService {
 
   Future<Directory> _ensureExtracted() async {
     final support = await getApplicationSupportDirectory();
-    final info = await PackageInfo.fromPlatform();
-    final version = '${info.version}+${info.buildNumber}';
-    final root = Directory('${support.path}/web/$version');
+    final bytes = await rootBundle.load('assets/web.zip');
+    final data = bytes.buffer.asUint8List();
+
+    // 재추출 키는 앱 버전이 아니라 zip의 내용 시그니처 — 같은 앱 버전으로
+    // 웹 번들만 갱신해도 반드시 새로 풀린다. (버전 키였을 때 구버전 번들이
+    // 영구 캐시되어 브릿지 없는 페이지를 서빙하는 사고가 있었다.)
+    var sig = data.length;
+    for (var i = 0; i < data.length; i += 4096) {
+      sig = (sig * 31 + data[i]) & 0x7fffffff;
+    }
+    final key = 'v$sig-${data.length}';
+    final root = Directory('${support.path}/web/$key');
     final marker = File('${root.path}/.complete');
 
     if (marker.existsSync()) return root;
@@ -51,8 +59,7 @@ class WebBundleService {
     if (parent.existsSync()) parent.deleteSync(recursive: true);
     root.createSync(recursive: true);
 
-    final bytes = await rootBundle.load('assets/web.zip');
-    final archive = ZipDecoder().decodeBytes(bytes.buffer.asUint8List());
+    final archive = ZipDecoder().decodeBytes(data);
     await extractArchiveToDisk(archive, root.path);
 
     marker.writeAsStringSync('ok');

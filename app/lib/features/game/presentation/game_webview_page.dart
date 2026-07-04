@@ -13,7 +13,7 @@ import '../../auth/presentation/auth_notifier.dart';
 import '../../lobby/domain/game_meta.dart';
 import 'game_route_args.dart';
 import 'lobby_bridge.dart';
-import 'yeouido_lobby_view.dart';
+import 'native_lobby_view.dart';
 
 /// In-game screen. The bundled web client (Next.js static export, Phaser and
 /// all) runs inside an InAppWebView against the same Colyseus server as web
@@ -46,8 +46,8 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
   InAppWebViewController? _controller;
   LobbySnap? _lobby;
 
-  bool get _wantsNativeLobby =>
-      widget.args.game == 'yeouido' && widget.args.mode != 'spectate';
+  // 게임 시작 전 로직은 전부 네이티브 — 관전만 웹뷰 직행.
+  bool get _wantsNativeLobby => widget.args.mode != 'spectate';
 
   bool get _showNativeLobby =>
       _wantsNativeLobby && _error == null && (_lobby?.phase ?? 'lobby') == 'lobby';
@@ -221,8 +221,9 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
                                 ? '화면 불러오는 중 (2/3)'
                                 : '서버 접속 중 (3/3)',
                         onLeave: () => context.pop())
-                    : YeouidoLobbyView(
+                    : NativeLobbyView(
                         snap: _lobby!,
+                        meta: meta,
                         onCommand: _cmd,
                         onLeave: () => context.pop(),
                       ),
