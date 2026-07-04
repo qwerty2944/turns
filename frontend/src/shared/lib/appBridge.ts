@@ -5,6 +5,12 @@
  * behind it and stays the single Colyseus connection: we push normalized
  * lobby snapshots up to Flutter (callHandler) and accept commands back
  * (window.__turnsApp.cmd) that translate to room messages.
+ *
+ * Timing: `window.flutter_inappwebview.callHandler` only becomes usable
+ * after the `flutterInAppWebViewPlatformReady` event. Early snapshots are
+ * cached per-handler and replayed when the platform comes up — otherwise
+ * a quiet lobby (no further state changes) would leave the native UI
+ * waiting forever.
  */
 
 type AppWindow = Window & {
@@ -19,15 +25,39 @@ type AppWindow = Window & {
 const w = (): AppWindow | null =>
   typeof window === "undefined" ? null : (window as unknown as AppWindow);
 
-export const isInApp = (): boolean => !!w()?.flutter_inappwebview;
+let platformReady = false;
+const pendingByHandler = new Map<string, unknown>();
+
+if (typeof window !== "undefined") {
+  window.addEventListener("flutterInAppWebViewPlatformReady", () => {
+    platformReady = true;
+    for (const [handler, payload] of pendingByHandler) {
+      postToApp(handler, payload);
+    }
+    pendingByHandler.clear();
+  });
+}
+
+const callHandlerUsable = (): boolean =>
+  !!w()?.flutter_inappwebview?.callHandler;
+
+export const isInApp = (): boolean =>
+  platformReady ||
+  callHandlerUsable() ||
+  // 앱 웹뷰는 항상 tk 파라미터로 진입한다 — platformReady 이전에도 참으로.
+  (typeof location !== "undefined" &&
+    new URLSearchParams(location.search).has("tk"));
 
 export const postToApp = (handler: string, payload: unknown) => {
-  const win = w();
-  if (!win?.flutter_inappwebview) return;
+  if (!callHandlerUsable()) {
+    // 플랫폼 준비 전 — 최신 페이로드만 캐시했다가 ready 시 재전송.
+    pendingByHandler.set(handler, payload);
+    return;
+  }
   try {
-    win.flutter_inappwebview.callHandler(handler, payload);
+    w()!.flutter_inappwebview!.callHandler(handler, payload);
   } catch {
-    // handler not registered yet — next snapshot will land
+    pendingByHandler.set(handler, payload);
   }
 };
 

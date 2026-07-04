@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -237,7 +238,25 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
   }
 }
 
-class _Splash extends StatelessWidget {
+/// 심즈식 로딩 멘트 — 지루한 스피너 대신 낄낄거리게.
+const _loadingQuips = <String>[
+  '보좌관이 커피를 타는 중…',
+  '유세 차량 시동 거는 중…',
+  '공약(空約) 인쇄하는 중…',
+  '현수막 삐뚤게 거는 중…',
+  '여론조사 오차범위 계산 중…',
+  '필리버스터 원고 찾는 중…',
+  '내부 총질 말리는 중…',
+  '재검표 하는 중…',
+  '기자들 도시락 주문하는 중…',
+  '늑대 목욕시키는 중…',
+  '주사위 모서리 다듬는 중…',
+  '카드 뒷면 광내는 중…',
+  '테트리스 블록 줄 세우는 중…',
+  '서버에게 아부하는 중…',
+];
+
+class _Splash extends StatefulWidget {
   const _Splash({required this.meta, required this.error, required this.onLeave});
 
   final GameMeta? meta;
@@ -245,17 +264,47 @@ class _Splash extends StatelessWidget {
   final VoidCallback onLeave;
 
   @override
+  State<_Splash> createState() => _SplashState();
+}
+
+class _SplashState extends State<_Splash> {
+  late int _quip = DateTime.now().millisecondsSinceEpoch % _loadingQuips.length;
+  Timer? _timer;
+  bool _slow = false;
+  int _elapsed = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) return;
+      setState(() {
+        _quip = (_quip + 1) % _loadingQuips.length;
+        _elapsed += 2;
+        if (_elapsed >= 14) _slow = true; // 무한 스피너 방지 — 탈출구 노출
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final error = widget.error;
     return Container(
       color: AppColors.bg,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(meta?.emoji ?? '🎲', style: const TextStyle(fontSize: 52)),
+            Text(widget.meta?.emoji ?? '🎲', style: const TextStyle(fontSize: 52)),
             const SizedBox(height: 16),
             Text(
-              meta?.displayName ?? '게임',
+              widget.meta?.displayName ?? '게임',
               style: const TextStyle(
                 color: AppColors.accent,
                 fontSize: 20,
@@ -263,19 +312,40 @@ class _Splash extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            if (error == null)
-              const CircularProgressIndicator(color: AppColors.accent)
-            else ...[
+            if (error == null) ...[
+              const CircularProgressIndicator(color: AppColors.accent),
+              const SizedBox(height: 18),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  _loadingQuips[_quip],
+                  key: ValueKey(_quip),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+              ),
+              if (_slow) ...[
+                const SizedBox(height: 18),
+                const Text(
+                  '연결이 평소보다 오래 걸리네요…',
+                  style: TextStyle(color: AppColors.gold, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: widget.onLeave,
+                  child: const Text('로비로 돌아가기'),
+                ),
+              ],
+            ] else ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
-                  error!,
+                  error,
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: AppColors.danger),
                 ),
               ),
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: onLeave, child: const Text('로비로')),
+              OutlinedButton(onPressed: widget.onLeave, child: const Text('로비로')),
             ],
           ],
         ),
