@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/error/failure.dart';
+import '../../../core/network/dio_provider.dart';
 import '../data/auth_repository_impl.dart';
 import '../domain/user.dart';
 
@@ -13,7 +14,8 @@ part 'auth_notifier.g.dart';
 sealed class AuthState with _$AuthState {
   /// Session restore in flight (app boot).
   const factory AuthState.restoring() = AuthRestoring;
-  const factory AuthState.unauthenticated() = AuthUnauthenticated;
+  const factory AuthState.unauthenticated({@Default(false) bool revoked}) =
+      AuthUnauthenticated;
   const factory AuthState.authenticated({
     required String token,
     required User user,
@@ -24,6 +26,13 @@ sealed class AuthState with _$AuthState {
 class AuthNotifier extends _$AuthNotifier {
   @override
   AuthState build() {
+    // Other-device login revokes our token → drop straight to the login
+    // screen with a notice (single active session per account).
+    ref.listen(sessionRevokedProvider, (prev, next) {
+      if (prev != null && next > prev && state is AuthAuthenticated) {
+        state = const AuthState.unauthenticated(revoked: true);
+      }
+    });
     _restore();
     return const AuthState.restoring();
   }

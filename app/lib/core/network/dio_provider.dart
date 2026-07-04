@@ -26,8 +26,32 @@ Dio dio(Ref ref) {
         }
         handler.next(options);
       },
+      onError: (e, handler) async {
+        // 401 outside the login/signup flow means the session was revoked —
+        // e.g. the same account logged in elsewhere (single-session policy:
+        // every login bumps tokenVersion server-side, invalidating old JWTs).
+        final path = e.requestOptions.path;
+        final isAuthCall =
+            path.contains('/auth/login') || path.contains('/auth/signup');
+        if (e.response?.statusCode == 401 && !isAuthCall) {
+          final storage = await ref.read(tokenStorageProvider.future);
+          await storage.clear();
+          ref.read(sessionRevokedProvider.notifier).markRevoked();
+        }
+        handler.next(e);
+      },
     ),
   );
 
   return dio;
+}
+
+/// Bumped when the server rejects our token (logged in elsewhere). The auth
+/// notifier listens and drops to the login screen with a notice.
+@Riverpod(keepAlive: true)
+class SessionRevoked extends _$SessionRevoked {
+  @override
+  int build() => 0;
+
+  void markRevoked() => state++;
 }

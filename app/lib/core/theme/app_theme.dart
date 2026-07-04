@@ -29,6 +29,7 @@ ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    fontFamily: 'Galmuri11',
     scaffoldBackgroundColor: AppColors.bg,
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.bg,
