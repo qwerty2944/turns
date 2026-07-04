@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,10 +11,18 @@ import '../../../core/web_bundle/web_bundle_service.dart';
 import '../../auth/presentation/auth_notifier.dart';
 import '../../lobby/domain/game_meta.dart';
 import 'game_route_args.dart';
+import 'lobby_bridge.dart';
+import 'yeouido_lobby_view.dart';
 
-/// In-game screen: the bundled web client (Next.js static export, Phaser and
-/// all) served from 127.0.0.1 inside an InAppWebView. Same Colyseus server as
-/// web users → cross-play.
+/// In-game screen. The bundled web client (Next.js static export, Phaser and
+/// all) runs inside an InAppWebView against the same Colyseus server as web
+/// users → cross-play.
+///
+/// Hybrid lobby: for games with a native pre-game lobby (yeouido), the
+/// WebView stays HIDDEN behind a native Flutter lobby while phase=lobby —
+/// the page pushes state up via the `turnsState` JS handler and native UI
+/// sends commands back down (window.__turnsApp.cmd). The WebView is revealed
+/// the moment the match starts.
 class GameWebViewPage extends ConsumerStatefulWidget {
   const GameWebViewPage({super.key, required this.args});
 
@@ -32,6 +42,14 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
   String? _error;
   Uri? _playUri;
   String _origin = '';
+  InAppWebViewController? _controller;
+  LobbySnap? _lobby;
+
+  bool get _wantsNativeLobby =>
+      widget.args.game == 'yeouido' && widget.args.mode != 'spectate';
+
+  bool get _showNativeLobby =>
+      _wantsNativeLobby && _error == null && (_lobby?.phase ?? 'lobby') == 'lobby';
 
   @override
   void initState() {
@@ -70,7 +88,21 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
     }
   }
 
+  /// Send a command into the page (native lobby → Colyseus room message).
+  void _cmd(String name, [Object? payload]) {
+    final c = _controller;
+    if (c == null) return;
+    final args = payload == null
+        ? jsonEncode(name)
+        : '${jsonEncode(name)}, ${jsonEncode(jsonEncode(payload))}';
+    c.evaluateJavascript(
+      source: 'window.__turnsApp && window.__turnsApp.cmd($args)',
+    );
+  }
+
   Future<bool> _confirmLeave() async {
+    // 로비 단계에서는 진행 중인 판이 없으니 바로 나간다.
+    if (_showNativeLobby) return true;
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -147,72 +179,105 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
                   },
                   onWebViewCreated: (controller) {
                     GameWebViewPage.debugController = controller;
+                    _controller = controller;
+                    controller.addJavaScriptHandler(
+                      handlerName: 'turnsState',
+                      callback: (args) {
+                        if (!mounted || args.isEmpty) return;
+                        final raw = args.first;
+                        if (raw is Map) {
+                          setState(() {
+                            _lobby = LobbySnap.fromJson(
+                                Map<String, dynamic>.from(raw));
+                          });
+                        }
+                      },
+                    );
                   },
                   onLoadStop: (controller, url) {
                     if (mounted) setState(() => _pageLoaded = true);
                   },
                 ),
-              if (!_pageLoaded)
-                Container(
-                  color: AppColors.bg,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(meta?.emoji ?? '🎲',
-                            style: const TextStyle(fontSize: 52)),
-                        const SizedBox(height: 16),
-                        Text(
-                          meta?.displayName ?? widget.args.game,
-                          style: const TextStyle(
-                            color: AppColors.accent,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (_error == null)
-                          const CircularProgressIndicator(
-                              color: AppColors.accent)
-                        else ...[
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style:
-                                  const TextStyle(color: AppColors.danger),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          OutlinedButton(
-                            onPressed: () => context.pop(),
-                            child: const Text('로비로'),
-                          ),
-                        ],
-                      ],
+
+              // ── 네이티브 대기실 (웹뷰는 뒤에서 연결 유지) ──
+              if (_showNativeLobby)
+                _lobby == null
+                    ? _Splash(meta: meta, error: _error, onLeave: () => context.pop())
+                    : YeouidoLobbyView(
+                        snap: _lobby!,
+                        onCommand: _cmd,
+                        onLeave: () => context.pop(),
+                      ),
+
+              if (!_showNativeLobby && !_pageLoaded)
+                _Splash(meta: meta, error: _error, onLeave: () => context.pop()),
+
+              // 상단 우측 나가기 버튼 — 인게임(웹뷰 노출) 상태에서만
+              if (!_showNativeLobby)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: IconButton(
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.bg.withValues(alpha: 0.55),
                     ),
+                    icon: const Icon(Icons.close,
+                        color: AppColors.muted, size: 20),
+                    onPressed: () async {
+                      final leave = await _confirmLeave();
+                      if (leave && mounted && context.mounted) context.pop();
+                    },
                   ),
                 ),
-              // 상단 우측 나가기 버튼 (웹뷰 로드 후에도 항상 접근 가능)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.bg.withValues(alpha: 0.55),
-                  ),
-                  icon: const Icon(Icons.close,
-                      color: AppColors.muted, size: 20),
-                  onPressed: () async {
-                    final leave = await _confirmLeave();
-                    if (leave && mounted && context.mounted) context.pop();
-                  },
-                ),
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Splash extends StatelessWidget {
+  const _Splash({required this.meta, required this.error, required this.onLeave});
+
+  final GameMeta? meta;
+  final String? error;
+  final VoidCallback onLeave;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.bg,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(meta?.emoji ?? '🎲', style: const TextStyle(fontSize: 52)),
+            const SizedBox(height: 16),
+            Text(
+              meta?.displayName ?? '게임',
+              style: const TextStyle(
+                color: AppColors.accent,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (error == null)
+              const CircularProgressIndicator(color: AppColors.accent)
+            else ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.danger),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(onPressed: onLeave, child: const Text('로비로')),
+            ],
+          ],
         ),
       ),
     );

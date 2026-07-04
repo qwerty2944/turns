@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import type { Room } from "@colyseus/sdk";
 import { useGameRoom } from "@/features/game-session/lib/useGameRoom";
 import { useAuthStore } from "@/entities/user/model/authStore";
+import { isInApp, postToApp, registerAppCommands } from "@/shared/lib/appBridge";
 import { cardArt, cardView, FACTION_META } from "../model/cards";
 import {
   toSnap,
@@ -75,6 +76,11 @@ export const YeouidoTable = (props: Props) => {
   const [myHand, setMyHand] = useState<string[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [pops, setPops] = useState<Pop[]>([]);
+  const [drawFlights, setDrawFlights] = useState<
+    { id: number; enemy: boolean; from: { x: number; y: number }; to: { x: number; y: number }; go: boolean }[]
+  >([]);
+  const flightIdRef = useRef(0);
+  const handRowRef = useRef<HTMLDivElement | null>(null);
   const popIdRef = useRef(0);
   const [stage, setStage] = useState<{ a: YdAnnouncement; id: number } | null>(null);
   const stageIdRef = useRef(0);
@@ -121,6 +127,31 @@ export const YeouidoTable = (props: Props) => {
 
   handlersRef.current = {
     playAttack,
+    drawFx: (sid: string) => {
+      // 카드백이 드로어의 플레이트에서 손패(나) 또는 플레이트 옆(상대)으로 날아간다.
+      const from = anchorFor({ sid, hero: true });
+      if (!from || !wrapRef.current) return;
+      const enemy = sid !== meSid;
+      let to = { x: from.x + 70, y: from.y + (enemy ? 26 : -20) };
+      if (!enemy && handRowRef.current) {
+        const wr = wrapRef.current.getBoundingClientRect();
+        const hr = handRowRef.current.getBoundingClientRect();
+        to = { x: hr.left - wr.left + hr.width / 2, y: hr.top - wr.top + hr.height / 2 };
+      }
+      const id = ++flightIdRef.current;
+      setDrawFlights((prev) => [...prev.slice(-5), { id, enemy, from, to, go: false }]);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() =>
+          setDrawFlights((prev) =>
+            prev.map((f) => (f.id === id ? { ...f, go: true } : f)),
+          ),
+        ),
+      );
+      setTimeout(
+        () => setDrawFlights((prev) => prev.filter((f) => f.id !== id)),
+        620,
+      );
+    },
     impact: (at: Loc, power: number) => {
       const a = anchorFor(at);
       if (a) overlayRef.current?.playEffect({ kind: "impact", x: a.x, y: a.y, power });
@@ -182,6 +213,43 @@ export const YeouidoTable = (props: Props) => {
       onFxBatch(batch);
     });
   }, [room, onSnap, onFxBatch]);
+
+  // ─── Flutter app bridge: native pre-game lobby drives this hidden page ───
+  useEffect(() => {
+    if (!room || !isInApp()) return;
+    return registerAppCommands({
+      pickFaction: (p) =>
+        room.send("pickFaction", { faction: (p as { faction?: string })?.faction }),
+      toggleReady: () => room.send("toggleReady"),
+      startGame: () => room.send("startGame"),
+      chat: (p) => {
+        if (typeof p === "string" && p.trim()) room.send("chat", p.trim());
+      },
+    });
+  }, [room]);
+
+  useEffect(() => {
+    if (!snap || !isInApp()) return;
+    postToApp("turnsState", {
+      game: "yeouido",
+      phase: snap.phase,
+      meSid: room?.sessionId ?? "",
+      hostSid: snap.hostSessionId,
+      players: Object.values(snap.players).map((p) => ({
+        sid: p.sessionId,
+        nickname: p.nickname,
+        faction: p.faction,
+        ready: p.ready,
+        connected: p.connected,
+      })),
+      log: snap.log.slice(-40).map((e) => ({
+        ts: e.ts,
+        kind: e.kind,
+        text: e.text,
+        actor: e.actor,
+      })),
+    });
+  }, [snap, room]);
 
   // ─── derived ───
   const phase = snap?.phase ?? "lobby";
@@ -426,7 +494,8 @@ export const YeouidoTable = (props: Props) => {
       {status.kind === "connecting" && (
         <p className="muted" style={{ margin: 0 }}>방에 연결 중…</p>
       )}
-      {status.kind === "error" && (
+      {/* 접속 자체가 실패했을 때만 배너 — 상태가 살아있으면(재접속 등) 노이즈 억제 */}
+      {status.kind === "error" && !snap && (
         <div className="error" style={{ marginTop: 0 }}>{status.error}</div>
       )}
       {status.kind === "closed" && <RoomClosedRedirect />}
@@ -575,7 +644,10 @@ export const YeouidoTable = (props: Props) => {
                     <button onClick={cancelTargeting}>취소</button>
                   </div>
                 )}
-                <div className={`yd-hand${myHand.length > 5 ? " yd-hand--crowded" : ""}`}>
+                <div
+                  ref={handRowRef}
+                  className={`yd-hand${myHand.length > 5 ? " yd-hand--crowded" : ""}`}
+                >
                   {myHand.map((cardId, idx) => (
                     <HandCard
                       key={`${cardId}-${idx}`}
@@ -595,10 +667,25 @@ export const YeouidoTable = (props: Props) => {
               isMyTurn={isMyTurn}
               turnEndsAt={snap.turnEndsAt}
               turnMs={TURN_MS}
-              disabled={animating}
               onEndTurn={onEndTurn}
             />
             <PhaserEffectsOverlay ref={overlayRef} />
+            {drawFlights.map((f) => (
+              <div
+                key={f.id}
+                className={`yd-draw-fly${f.enemy ? " yd-draw-fly--enemy" : ""}`}
+                style={{
+                  left: f.from.x - (f.enemy ? 20 : 26),
+                  top: f.from.y - (f.enemy ? 28 : 37),
+                  transform: f.go
+                    ? `translate(${f.to.x - f.from.x}px, ${f.to.y - f.from.y}px) rotate(12deg) scale(${f.enemy ? 0.7 : 0.9})`
+                    : "translate(0,0)",
+                  opacity: f.go ? 0.15 : 1,
+                }}
+              >
+                <div className="yd-cardback">◆</div>
+              </div>
+            ))}
             <PopLayer
               pops={pops}
               onDone={(id) => setPops((prev) => prev.filter((p) => p.id !== id))}

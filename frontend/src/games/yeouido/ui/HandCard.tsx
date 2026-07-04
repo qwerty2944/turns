@@ -42,6 +42,18 @@ export const HandCard = ({ cardId, playable, selected, onClick, small }: Props) 
           <span className="yd-stat yd-stat--hp">{view.hp}</span>
         </>
       )}
+      {!small && (
+        <span className="yd-tooltip" role="tooltip">
+          <span className="yd-tooltip-name">
+            ({view.cost}) {view.name}
+            {view.type === "unit" ? ` · ${view.atk}/${view.hp}` : ""}
+          </span>
+          {view.text && <span className="yd-tooltip-text">{view.text}</span>}
+          {view.flavor && (
+            <span className="yd-tooltip-flavor">{view.flavor}</span>
+          )}
+        </span>
+      )}
     </button>
   );
 };

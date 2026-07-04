@@ -1524,8 +1524,8 @@ input:focus, select:focus, textarea:focus {
   animation: yd-hit 0.32s ease;
 }
 @keyframes yd-hit {
-  0% { filter: brightness(2.6) saturate(0.4); transform: translate(0, -6px) scale(1.04); }
-  55% { filter: brightness(1.4); transform: translate(0, 3px); }
+  0% { filter: brightness(3) saturate(0.3); transform: translate(var(--kx, 0px), var(--ky, -10px)) scale(1.07) rotate(2.5deg); }
+  45% { filter: brightness(1.6); transform: translate(calc(var(--kx, 0px) * -0.35), 4px) rotate(-1.5deg); }
   100% { filter: none; transform: none; }
 }
 
@@ -1560,13 +1560,20 @@ input:focus, select:focus, textarea:focus {
 }
 .yd-hand {
   display: flex;
-  justify-content: center;
   align-items: flex-end;
   gap: 8px;
   max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 4px 2px 2px;
+  scrollbar-width: none;
 }
-.yd-hand--crowded { gap: 0; }
-.yd-hand--crowded .yd-card:not(:first-child) { margin-left: -26px; }
+.yd-hand::-webkit-scrollbar { display: none; }
+/* auto-margins center the fan when it fits, scroll kicks in when it doesn't
+   — card count changes never reflow the rest of the board */
+.yd-hand > :first-child { margin-left: auto; }
+.yd-hand > :last-child { margin-right: auto; }
+.yd-hand--crowded { gap: 6px; }
 .yd-card {
   position: relative;
   width: clamp(86px, 9.5vw, 122px);
@@ -1635,13 +1642,18 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.yd-card-body { min-height: 40px; display: flex; align-items: center; }
+.yd-card-body { height: 42px; display: flex; align-items: center; overflow: hidden; }
 .yd-card-text {
   font-size: 9.5px;
   line-height: 1.35;
   padding: 1px 6px;
   color: var(--text);
   word-break: keep-all;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 .yd-card-flavor { color: var(--muted); font-style: italic; }
 .yd-card--small { width: 72px; }
@@ -1762,25 +1774,54 @@ input:focus, select:focus, textarea:focus {
 /* ─── end turn button ─── */
 .yd-endturn {
   position: absolute;
-  right: 14px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 10px 14px;
-  border-radius: 999px;
+  gap: 3px;
+  min-width: 84px;
+  padding: 12px 14px 10px;
+  border-radius: 12px;
   font-family: var(--font-display);
-  font-size: 12px;
-  background:
-    conic-gradient(var(--gold-soft, #d9b66c) var(--pct, 0%), rgba(80, 70, 120, 0.35) 0) border-box;
-  border: 3px solid transparent;
+  font-size: 13px;
+  color: var(--muted);
+  background: rgba(14, 9, 34, 0.92);
+  border: 2px solid var(--panel-border);
+  box-shadow: 0 4px 0 rgba(6, 3, 16, 0.9);
+  cursor: default;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
-.yd-endturn--mine { color: var(--gold, #f1d999); }
-.yd-endturn--urgent { animation: yd-hp-danger 0.8s ease-in-out infinite; }
-.yd-endturn-secs { font-size: 10px; color: var(--muted); }
+.yd-endturn--mine {
+  color: #1a1233;
+  background: var(--accent, #f1d999);
+  border-color: #0a0618;
+  cursor: pointer;
+  animation: yd-endturn-glow 1.6s ease-in-out infinite;
+}
+.yd-endturn--mine:active { transform: translateY(calc(-50% + 3px)); box-shadow: 0 1px 0 rgba(6,3,16,0.9); }
+@keyframes yd-endturn-glow {
+  0%, 100% { box-shadow: 0 4px 0 rgba(6,3,16,0.9), 0 0 10px rgba(241,217,153,0.35); }
+  50% { box-shadow: 0 4px 0 rgba(6,3,16,0.9), 0 0 22px rgba(241,217,153,0.75); }
+}
+.yd-endturn--urgent { animation: yd-hp-danger 0.7s ease-in-out infinite; }
+.yd-endturn-label { line-height: 1; }
+.yd-endturn-secs { font-size: 10px; opacity: 0.8; }
+.yd-endturn-bar {
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.yd-endturn-fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  transition: width 0.25s linear;
+}
 
 /* ─── damage pops ─── */
 .yd-pop-layer {
@@ -2139,3 +2180,95 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 .room-emoji { font-size: 24px; flex: 0 0 auto; }
+
+
+/* ─── touch/drag hygiene: 게임 화면에서 텍스트/이미지 선택·드래그 방지 ── */
+.play-shell,
+.play-shell * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+.play-shell input,
+.play-shell textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ─── yeouido draw flyer: 덱(플레이트)→손패 카드 비행 + 플립 ─── */
+.yd-draw-fly {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  width: 52px;
+  height: 74px;
+  transition: transform 0.5s cubic-bezier(0.3, 0.9, 0.4, 1), opacity 0.2s ease;
+  perspective: 500px;
+}
+.yd-cardback {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 2px solid rgba(217, 182, 108, 0.7);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(241, 217, 153, 0.25) 0 12%, transparent 13%),
+    linear-gradient(135deg, #241a52 0%, #141034 55%, #241a52 100%);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--gold-soft, #d9b66c);
+}
+.yd-draw-fly--enemy { width: 40px; height: 57px; }
+
+
+/* ─── yeouido hand tooltip: 클램프된 설명 전체 보기 (호버/선택 시) ─── */
+.yd-card { position: relative; }
+.yd-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  width: 220px;
+  padding: 10px 12px;
+  background: rgba(14, 9, 34, 0.97);
+  border: 2px solid var(--gold, #f1d999);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 40;
+  text-align: left;
+  white-space: normal;
+}
+.yd-card:hover .yd-tooltip,
+.yd-card--selected .yd-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.yd-tooltip-name {
+  display: block;
+  color: var(--gold-soft, #d9b66c);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.yd-tooltip-text {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.yd-tooltip-flavor {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+}

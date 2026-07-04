@@ -23,6 +23,8 @@ export type YdAnnouncement =
 export type FxHandlers = {
   /** FLIP lunge; resolves at the moment of impact (return anim continues). */
   playAttack: (from: Loc, to: Loc) => Promise<void>;
+  /** Card-back flight from the drawer's plate toward their hand. */
+  drawFx: (sid: string) => void;
   /** Impact burst + camera/DOM shake at a location. */
   impact: (at: Loc, power: number) => void;
   pop: (at: Loc, n: number, kind: "dmg" | "heal") => void;
@@ -117,7 +119,8 @@ export const useFxQueue = (opts: {
           i++;
           break;
         case "draw":
-          await sleep(D(160));
+          if (!instant) h()?.drawFx(e.sid);
+          await sleep(D(280));
           i++;
           break;
         case "fatigue":
