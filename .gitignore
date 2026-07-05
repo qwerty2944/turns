@@ -1,29 +1,20 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
-backend/build/
-frontend/.next/
-frontend/out/
+# Next build artifacts
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Local env (commit *.example only)
 .env
 .env.local
 .env.*.local
-backend/.env
-frontend/.env.local
-
-# Local sqlite (legacy, no longer used)
-backend/data.db
-backend/data.db-shm
-backend/data.db-wal
 
 # Vercel
-frontend/.vercel/
-
-# Next generated
-frontend/next-env.d.ts
-frontend/tsconfig.tsbuildinfo
+.vercel/
 
 # Logs
 *.log
@@ -34,10 +25,6 @@ frontend/tsconfig.tsbuildinfo
 .idea/
 .vscode/
 
-# Misc
-*.tsbuildinfo
-app/assets/web.zip
-
-# split repos: backend → qwerty2944/turns-backend, app → qwerty2944/turns-app
+# nested repos: qwerty2944/turns-backend, qwerty2944/turns-app (local dir: mobile/)
 /backend/
-/app/
+/mobile/

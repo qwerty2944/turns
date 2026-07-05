@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Next.js static export that ships inside the Flutter app's WebView
-# and pack it as app/assets/web.zip.
+# and pack it as mobile/assets/web.zip.
 #
 #   ./scripts/build-mobile-web.sh                      # production backend
 #   BACKEND=http://192.168.0.10:2567 ./scripts/build-mobile-web.sh   # local dev backend
@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 
 BACKEND="${BACKEND:-https://kr-icn-41b6e883.colyseus.cloud}"
 WS_BACKEND="${WS_BACKEND:-$(echo "$BACKEND" | sed -e 's/^https:/wss:/' -e 's/^http:/ws:/')}"
-OUT_ZIP="../app/assets/web.zip"
+OUT_ZIP="mobile/assets/web.zip"
 
 echo "building static export → backend=$BACKEND ws=$WS_BACKEND"
 rm -rf out
