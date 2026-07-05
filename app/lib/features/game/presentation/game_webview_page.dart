@@ -48,12 +48,19 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
   LobbySnap? _lobby;
   bool _chatOpen = false;
   int _seenLogLen = 0;
+  int _reloads = 0;
+  bool _bridgeFallback = false; // 브릿지 불통 시 웹뷰 로비로 폴백
+  String? _lastWebError;
+  Timer? _bridgeWatchdog;
 
   // 게임 시작 전 로직은 전부 네이티브 — 관전만 웹뷰 직행.
   bool get _wantsNativeLobby => widget.args.mode != 'spectate';
 
   bool get _showNativeLobby =>
-      _wantsNativeLobby && _error == null && (_lobby?.phase ?? 'lobby') == 'lobby';
+      _wantsNativeLobby &&
+      !_bridgeFallback &&
+      _error == null &&
+      (_lobby?.phase ?? 'lobby') == 'lobby';
 
   @override
   void initState() {
@@ -64,8 +71,29 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
 
   @override
   void dispose() {
+    _bridgeWatchdog?.cancel();
     WakelockPlus.disable();
     super.dispose();
+  }
+
+  /// 실기기 안전망: 네이티브 대기실이 상태를 못 받으면 12초 후 웹뷰를 1회
+  /// 리로드하고, 그래도 안 오면 웹뷰(웹 대기실)로 폴백해 무한 로딩을
+  /// 원천 차단한다.
+  void _armBridgeWatchdog() {
+    _bridgeWatchdog?.cancel();
+    if (!_wantsNativeLobby) return;
+    _bridgeWatchdog = Timer(const Duration(seconds: 12), () {
+      if (!mounted || _lobby != null || _error != null) return;
+      if (_reloads < 1) {
+        _reloads++;
+        debugPrint('[webview] bridge silent — reloading (attempt $_reloads)');
+        _controller?.reload();
+        _armBridgeWatchdog();
+      } else {
+        debugPrint('[webview] bridge still silent — falling back to web lobby');
+        setState(() => _bridgeFallback = true);
+      }
+    });
   }
 
   Future<void> _boot() async {
@@ -87,6 +115,7 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
             .replace(queryParameters: widget.args.toQuery(token));
         _ready = true;
       });
+      _armBridgeWatchdog();
     } catch (e) {
       setState(() => _error = '게임 화면을 준비하지 못했습니다: $e');
     }
@@ -199,6 +228,7 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
                         if (!mounted || args.isEmpty) return;
                         final raw = args.first;
                         if (raw is Map) {
+                          _bridgeWatchdog?.cancel();
                           setState(() {
                             _lobby = LobbySnap.fromJson(
                                 Map<String, dynamic>.from(raw));
@@ -216,6 +246,16 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
                   },
                   onReceivedError: (controller, request, error) {
                     debugPrint('[webview] error ${request.url}: ${error.description}');
+                    if (mounted) {
+                      setState(() => _lastWebError = error.description);
+                    }
+                  },
+                  onWebContentProcessDidTerminate: (controller) {
+                    // iOS가 메모리 압박으로 웹 프로세스를 죽이면 아무 이벤트
+                    // 없이 백지가 된다 — 즉시 리로드.
+                    debugPrint('[webview] content process terminated — reload');
+                    _reloads++;
+                    controller.reload();
                   },
                 ),
 
@@ -225,6 +265,7 @@ class _GameWebViewPageState extends ConsumerState<GameWebViewPage> {
                     ? _Splash(
                         meta: meta,
                         error: _error,
+                        webError: _lastWebError,
                         stage: !_ready
                             ? '게임 준비 중 (1/3)'
                             : !_pageLoaded
@@ -310,11 +351,13 @@ class _Splash extends StatefulWidget {
     required this.error,
     required this.onLeave,
     this.stage,
+    this.webError,
   });
 
   final GameMeta? meta;
   final String? error;
   final VoidCallback onLeave;
+  final String? webError;
 
   /// 진행 단계 표시 — 실기기에서 어디서 막히는지 눈으로 확인 가능.
   final String? stage;
@@ -392,6 +435,15 @@ class _SplashState extends State<_Splash> {
                   '연결이 평소보다 오래 걸리네요…',
                   style: TextStyle(color: AppColors.gold, fontSize: 12),
                 ),
+                if (widget.webError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      widget.webError!,
+                      style: const TextStyle(
+                          color: AppColors.danger, fontSize: 10),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 OutlinedButton(
                   onPressed: widget.onLeave,
